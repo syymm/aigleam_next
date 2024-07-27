@@ -89,7 +89,7 @@ const LoginComponent: React.FC = () => {
                 />
                 记住密码
               </label>
-              <a href="#" className="forgot-password">忘记密码了？</a>
+              <Link href="/forgotpassword" className="forgot-password">忘记密码了？</Link>
             </div>
             <Button type="submit" variant="contained" color="primary">立即登录</Button>
           </form>
