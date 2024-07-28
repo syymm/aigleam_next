@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
     );
 
     // 设置 cookie
-    cookies().set('token', token, {
+    cookies().set('authToken', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',

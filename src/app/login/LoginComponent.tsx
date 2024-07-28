@@ -1,6 +1,6 @@
-'use client';  // This is necessary for client-side interactivity in Next.js 13+
+'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import './LoginComponent.css'; 
 import Button from '@mui/material/Button';
@@ -11,25 +11,58 @@ import IconButton from '@mui/material/IconButton';
 import Visibility from '@mui/icons-material/Visibility';
 import VisibilityOff from '@mui/icons-material/VisibilityOff';
 import Checkbox from '@mui/material/Checkbox';
+import { useRouter } from 'next/navigation';
 
 const LoginComponent: React.FC = () => {
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const router = useRouter();
+
+  useEffect(() => {
+    // 检查是否已经登录
+    const checkAuth = async () => {
+      const response = await fetch('/api/check-auth');
+      if (response.ok) {
+        router.push('/hello');
+      }
+    };
+    checkAuth();
+  }, [router]);
 
   const theme = createTheme({
     palette: {
       primary: {
-        main: '#7E57C2', // 登录按钮悬停时颜色
+        main: '#7E57C2',
       },
     },
   });
 
-  const handleLogin = (e: React.FormEvent<HTMLFormElement>) => {
+  // 注意：handleLogin 函数的定义没有改变，但它现在会被表单提交事件触发
+  const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    // Implement your login logic here
-    console.log(email, password, rememberMe);
+    try {
+      const response = await fetch('/api/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ username, password, rememberMe }),
+      });
+
+      if (response.ok) {
+        // 登录成功，重定向到主页或仪表板
+        router.push('/hello');
+      } else {
+        // 处理登录失败
+        const data = await response.json();
+        alert(data.error || 'Login failed');
+      }
+    } catch (error) {
+      console.error('Login error:', error);
+      alert('An error occurred during login');
+    }
   };
 
   const handleClickShowPassword = () => setShowPassword(!showPassword);
@@ -39,13 +72,14 @@ const LoginComponent: React.FC = () => {
       <div className="login-component">
         <div className="login-form">
           <h1>Welcome 👋</h1>
+          {/* 修改：添加 onSubmit 属性到 form 元素 */}
           <form onSubmit={handleLogin}>
             <TextField
               sx={{ bgcolor: 'white', marginTop: '0px' }}
-              label="Email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              label="Username"
+              type="text"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
               required
               variant="outlined"
               fullWidth
@@ -91,9 +125,12 @@ const LoginComponent: React.FC = () => {
               </label>
               <Link href="/forgotpassword" className="forgot-password">忘记密码了？</Link>
             </div>
-            <Button type="submit" variant="contained" color="primary">立即登录</Button>
+            {/* 修改：确保按钮类型为 'submit' */}
+            <Button type="submit" variant="contained" color="primary" fullWidth style={{ marginTop: '20px' }}>
+              立即登录
+            </Button>
           </form>
-          <p>
+          <p style={{ marginTop: '20px', textAlign: 'center' }}>
             没有账号吗？<Link href="/register">现在注册一个</Link>
           </p>
         </div>
