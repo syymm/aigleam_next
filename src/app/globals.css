@@ -8,6 +8,9 @@
   --background-end-rgb: 255, 255, 255;
 }
 
+h1 {
+  @apply text-4xl; 
+}
 
 body {
   color: rgb(var(--foreground-rgb));
