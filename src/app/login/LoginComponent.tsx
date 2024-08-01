@@ -75,7 +75,7 @@ const LoginComponent: React.FC = () => {
           {/* 修改：添加 onSubmit 属性到 form 元素 */}
           <form onSubmit={handleLogin}>
             <TextField
-              sx={{ bgcolor: 'white', marginTop: '0px',borderRadius: '4px'}}
+              sx={{ bgcolor: 'white', marginTop: '0px', borderRadius: '4px' }}
               label="Username"
               type="text"
               value={username}
@@ -86,7 +86,7 @@ const LoginComponent: React.FC = () => {
               margin="normal"
             />
             <TextField
-              sx={{ bgcolor: 'white', marginTop: '15px',borderRadius: '4px' }}
+              sx={{ bgcolor: 'white', marginTop: '15px', borderRadius: '4px' }}
               label="Password"
               type={showPassword ? 'text' : 'password'}
               value={password}
