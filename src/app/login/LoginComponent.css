@@ -35,10 +35,12 @@
   margin-bottom: 3rem; /* 增加标题下的间距 */
 }
 
+/*
 .login-form .MuiOutlinedInput-root {
-  background-color: white; /* 设置背景颜色为白色 */
-  border-radius: 4px; /* 保持圆角 */
+  background-color: white; 
+  border-radius: 4px; 
 }
+*/
 
 .login-form form {
   display: flex;
@@ -59,9 +61,10 @@
   display: none
 }
 
-.MuiTextField-root {
+
+/* .MuiTextField-root {
   border-radius: 4px;
-}
+} */
 
 .MuiIconButton-root {
   border-radius: 50%; 
