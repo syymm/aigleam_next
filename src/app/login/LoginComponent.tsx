@@ -136,7 +136,7 @@ const LoginComponent: React.FC = () => {
           </p>
         </div>
         <div className="login-image">
-          {<Image src="/login_image/2.png" alt="loginImage" layout="responsive" objectFit="cover" width={500} height={750}/>}
+          {<Image src="/login_image/1.png" alt="loginImage" layout="fill" objectFit="cover"/>}
         </div>
       </div>
     </ThemeProvider>
