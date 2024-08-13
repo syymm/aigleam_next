@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import './LoginComponent.css'; 
+import './LoginComponent.css';
 import Button from '@mui/material/Button';
 import { createTheme, ThemeProvider } from '@mui/material/styles';
 import TextField from '@mui/material/TextField';
@@ -12,6 +12,7 @@ import Visibility from '@mui/icons-material/Visibility';
 import VisibilityOff from '@mui/icons-material/VisibilityOff';
 import Checkbox from '@mui/material/Checkbox';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 
 const LoginComponent: React.FC = () => {
   const [username, setUsername] = useState('');
@@ -135,7 +136,7 @@ const LoginComponent: React.FC = () => {
           </p>
         </div>
         <div className="login-image">
-          {/* 图片将在这里添加 */}
+          {<Image src="/login_image/2.png" alt="loginImage" layout="responsive" objectFit="cover" width={500} height={750}/>}
         </div>
       </div>
     </ThemeProvider>
