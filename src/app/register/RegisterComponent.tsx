@@ -6,51 +6,110 @@ import Image from 'next/image';
 import TextField from '@mui/material/TextField';
 import InputBase from '@mui/material/InputBase';
 import SendIcon from '@mui/icons-material/Send';
+import { Divider, Button, Snackbar, Alert } from '@mui/material';
 import './RegisterComponent.css';
-import { Divider, Button } from '@mui/material';
+import { useRouter } from 'next/navigation';
 
 const RegisterComponent: React.FC = () => {
   const [email, setEmail] = useState('');
   const [verificationCode, setVerificationCode] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [message, setMessage] = useState('');
+  const [openSnackbar, setOpenSnackbar] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const router = useRouter();
 
-  const handleRegister = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleRegister = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    // Implement your register logic here
-    console.log(email, verificationCode, password, confirmPassword);
+    setIsLoading(true);
+    setMessage('');
+
+    if (password !== confirmPassword) {
+      setMessage('两次输入的密码不匹配');
+      setOpenSnackbar(true);
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, verificationCode, password, confirmPassword }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setMessage('注册成功！');
+        setOpenSnackbar(true);
+        setTimeout(() => router.push('/login'), 2000);
+      } else {
+        setMessage(data.message || '注册失败，请重试。');
+        setOpenSnackbar(true);
+      }
+    } catch (error) {
+      setMessage('发生错误，请重试。');
+      setOpenSnackbar(true);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleSendVerificationCode = () => {
-    // Implement your logic to send verification code
-    console.log('Sending verification code to', email);
+  const handleSendVerificationCode = async () => {
+    if (!email) {
+      setMessage('请输入邮箱地址');
+      setOpenSnackbar(true);
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const response = await fetch('/api/sendVerificationCode', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setMessage('验证码已发送到您的邮箱。');
+      } else {
+        setMessage(data.message || '发送验证码失败，请重试。');
+      }
+      setOpenSnackbar(true);
+    } catch (error) {
+      setMessage('发生错误，请重试。');
+      setOpenSnackbar(true);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
     <div className="register-component">
       <div className="register-image">
-      {<Image
-            src="/image/2.png"
-            alt="RegisterImage"
-            fill
-          />}
+        {<Image src="/image/2.png" alt="RegisterImage" fill />}
       </div>
       <div className="register-form">
         <h1 className="register-title">Register Now✍️</h1> 
         <form onSubmit={handleRegister}>
-           <TextField
-              sx={{ bgcolor: 'white',  width: '100%'}}
-              label="Email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              variant="outlined"
-              size="small"
-            />
+          <TextField
+            sx={{ bgcolor: 'white', width: '100%' }}
+            label="Email"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            variant="outlined"
+            size="small"
+          />
           <div className="verification-code-section">
             <InputBase
-              sx={{ bgcolor: 'white',
+              sx={{
+                bgcolor: 'white',
                 marginTop:'20px',
                 height: '40px',
                 width: '100%',
@@ -82,15 +141,17 @@ const RegisterComponent: React.FC = () => {
                         boxShadow: 'none'
                       }
                     }}
+                    onClick={handleSendVerificationCode}
+                    disabled={isLoading}
                   >
-                    send
-                  </Button></>
+                    发送
+                  </Button>
+                </>
               }
             />
-            {/* <button type="button" onClick={handleSendVerificationCode}>发送验证码</button> */}
           </div>
           <TextField
-            sx={{ bgcolor: 'white'}}
+            sx={{ bgcolor: 'white', marginTop:'20px' }}
             type="password"
             label="密码"
             value={password}
@@ -100,7 +161,7 @@ const RegisterComponent: React.FC = () => {
             size='small'
           />
           <TextField
-            sx={{ bgcolor: 'white',marginTop:'20px'}}
+            sx={{ bgcolor: 'white', marginTop:'20px' }}
             type="password"
             label="确认密码"
             value={confirmPassword}
@@ -109,12 +170,24 @@ const RegisterComponent: React.FC = () => {
             variant='outlined'
             size='small'
           />
-          <button type="submit">注册</button>
+          <button type="submit" disabled={isLoading}>
+            {isLoading ? '注册中...' : '注册'}
+          </button>
         </form>
         <p>
           已有账号？<Link href="/login">现在登录</Link>
         </p>
       </div>
+      <Snackbar
+        open={openSnackbar}
+        autoHideDuration={6000}
+        onClose={() => setOpenSnackbar(false)}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert onClose={() => setOpenSnackbar(false)} severity={message.includes('成功') ? 'success' : 'error'} sx={{ width: '100%' }}>
+          {message}
+        </Alert>
+      </Snackbar>
     </div>
   );
 }
