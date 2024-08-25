@@ -15,7 +15,7 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 
 const LoginComponent: React.FC = () => {
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -49,7 +49,7 @@ const LoginComponent: React.FC = () => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ username, password, rememberMe }),
+        body: JSON.stringify({ email, password, rememberMe }),
       });
 
       if (response.ok) {
@@ -77,10 +77,10 @@ const LoginComponent: React.FC = () => {
           <form onSubmit={handleLogin}>
             <TextField
               sx={{ bgcolor: 'white', marginTop: '0px', borderRadius: '4px' }}
-              label="Username"
-              type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
+              label="Email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               required
               variant="outlined"
               fullWidth
@@ -136,7 +136,11 @@ const LoginComponent: React.FC = () => {
           </p>
         </div>
         <div className="login-image">
-          {<Image src="/login_image/1.png" alt="loginImage" fill style={{ objectFit: 'cover' }}/>}
+          {<Image
+            src="/image/1.png"
+            alt="loginImage"
+            fill
+          />}
         </div>
       </div>
     </ThemeProvider>

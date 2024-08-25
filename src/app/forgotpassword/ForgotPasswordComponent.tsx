@@ -197,7 +197,7 @@ const ForgotPasswordComponent: React.FC = () => {
             <InputBase
               sx={{
                 bgcolor: 'white',
-                padding: '0 8px',
+                padding: '0 10px',
                 display: 'flex',
                 alignItems: 'center',
                 height: '40px',

@@ -2,7 +2,17 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
+import TextField from '@mui/material/TextField';
+import InputBase from '@mui/material/InputBase';
+import { StepIconProps } from '@mui/material/StepIcon';
+import IconButton from '@mui/material/IconButton';
+import InputAdornment from '@mui/material/InputAdornment';
+import Visibility from '@mui/icons-material/Visibility';
+import VisibilityOff from '@mui/icons-material/VisibilityOff';
+import SendIcon from '@mui/icons-material/Send';
 import './RegisterComponent.css';
+import { Divider, Button } from '@mui/material';
 
 const RegisterComponent: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -24,41 +34,85 @@ const RegisterComponent: React.FC = () => {
   return (
     <div className="register-component">
       <div className="register-image">
-        {/* 图片将在这里添加 */}
+      {<Image
+            src="/image/2.png"
+            alt="RegisterImage"
+            fill
+          />}
       </div>
       <div className="register-form">
         <h1 className="register-title">Register Now✍️</h1> 
         <form onSubmit={handleRegister}>
-          <input
-            type="email"
-            placeholder="邮箱"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
+           <TextField
+              sx={{ bgcolor: 'white',  width: '100%'}}
+              label="Email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              variant="outlined"
+              size="small"
+            />
           <div className="verification-code-section">
-            <input
-              type="text"
+            <InputBase
+              sx={{ bgcolor: 'white',
+                marginTop:'20px',
+                height: '40px',
+                width: '100%',
+                border: '1px solid #d1d1d1',
+                borderRadius: '4px',
+                padding: '0 10px',
+              }}
               placeholder="验证码"
+              type='text'
               value={verificationCode}
               onChange={(e) => setVerificationCode(e.target.value)}
               required
+              endAdornment={
+                <><Divider sx={{ height: 28, m: 0.5 }} orientation="vertical" />
+                  <Button
+                    id="customButton"
+                    variant="text"
+                    size='small'
+                    endIcon={<SendIcon sx={{ color: '#6200ea', transform: 'translateY(-1px)'}} />}
+                    sx={{
+                      height: '30px !important',
+                      ml: 1,
+                      transform: 'translateY(-10px)',
+                      color: '#6200ea',
+                      backgroundColor: 'transparent',
+                      boxShadow: 'none',
+                      '&:hover': {
+                        backgroundColor: 'transparent',
+                        boxShadow: 'none'
+                      }
+                    }}
+                  >
+                    send
+                  </Button></>
+              }
             />
-            <button type="button" onClick={handleSendVerificationCode}>发送验证码</button>
+            {/* <button type="button" onClick={handleSendVerificationCode}>发送验证码</button> */}
           </div>
-          <input
+          <TextField
+            sx={{ bgcolor: 'white'}}
             type="password"
-            placeholder="密码"
+            label="密码"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
+            variant='outlined'
+            size='small'
           />
-          <input
+          <TextField
+            sx={{ bgcolor: 'white',marginTop:'20px'}}
             type="password"
-            placeholder="确认密码"
+            label="确认密码"
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
             required
+            variant='outlined'
+            size='small'
           />
           <button type="submit">注册</button>
         </form>

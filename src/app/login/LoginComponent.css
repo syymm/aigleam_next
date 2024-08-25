@@ -30,6 +30,11 @@
   height: 100vh;
 }
 
+.login-image img {
+  object-fit: cover;
+  object-position: center calc(50%); /* 调整这个值来改变视点 */
+}
+
 .login-form h1 {
   font-family: "Playwrite US Modern", cursive;
   font-optical-sizing: auto;
