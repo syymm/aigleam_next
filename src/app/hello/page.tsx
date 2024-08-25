@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 
 export default function HelloPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [currentTime, setCurrentTime] = useState(new Date().toLocaleTimeString());
   const router = useRouter();
 
   useEffect(() => {
@@ -25,13 +26,22 @@ export default function HelloPage() {
     checkAuth();
   }, [router]);
 
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date().toLocaleTimeString());
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, []);
+
   if (!isAuthenticated) {
     return <div>Checking authentication...</div>;
   }
 
   return (
-    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', flexDirection: 'column' }}>
       <h1>Hello</h1>
+      <p>Current time: {currentTime}</p>
     </div>
   );
 }
