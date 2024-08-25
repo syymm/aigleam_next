@@ -6,7 +6,7 @@ import Image from 'next/image';
 import TextField from '@mui/material/TextField';
 import InputBase from '@mui/material/InputBase';
 import SendIcon from '@mui/icons-material/Send';
-import { Divider, Button } from '@mui/material';
+import { Divider, Button, Snackbar, Alert } from '@mui/material';
 import './RegisterComponent.css';
 
 const RegisterComponent: React.FC = () => {
@@ -15,41 +15,77 @@ const RegisterComponent: React.FC = () => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isCodeSending, setIsCodeSending] = useState(false);
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
+  const [snackbarSeverity, setSnackbarSeverity] = useState<'success' | 'error'>('success');
 
   const handleRegister = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    // Implement your register logic here
     console.log(username, verificationCode, password, confirmPassword);
   };
 
-  const handleSendVerificationCode = () => {
-    // Implement your logic to send verification code
-    console.log('Sending verification code to', username);
+  const handleSendVerificationCode = async () => {
+    if (!username) {
+      setSnackbarMessage('请输入邮箱地址');
+      setSnackbarSeverity('error');
+      setSnackbarOpen(true);
+      return;
+    }
+    
+    setIsCodeSending(true);
+    try {
+      const response = await fetch('/api/send-verification-code', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ username }),
+      });
+
+      if (!response.ok) {
+        throw new Error('验证码发送失败');
+      }
+
+      setSnackbarMessage('验证码已发送，请检查您的邮箱');
+      setSnackbarSeverity('success');
+    } catch (error) {
+      console.error('发送验证码时出错:', error);
+      setSnackbarMessage('发送验证码失败，请稍后再试');
+      setSnackbarSeverity('error');
+    } finally {
+      setSnackbarOpen(true);
+      setIsCodeSending(false);
+    }
+  };
+
+  const handleSnackbarClose = () => {
+    setSnackbarOpen(false);
   };
 
   return (
     <div className="register-component">
       <div className="register-image">
-        {<Image src="/image/2.png" alt="RegisterImage" fill />}
+        <Image src="/image/2.png" alt="RegisterImage" fill />
       </div>
       <div className="register-form">
         <h1 className="register-title">Register Now✍️</h1> 
         <form onSubmit={handleRegister}>
-           <TextField
-              sx={{ bgcolor: 'white',  width: '100%'}}
-              label="Email"
-              type="email"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              required
-              variant="outlined"
-              size="small"
-            />
+          <TextField
+            sx={{ bgcolor: 'white', width: '100%' }}
+            label="Email"
+            type="email"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            required
+            variant="outlined"
+            size="small"
+          />
           <div className="verification-code-section">
             <InputBase
               sx={{
                 bgcolor: 'white',
-                marginTop:'20px',
+                marginTop: '20px',
                 height: '40px',
                 width: '100%',
                 border: '1px solid #d1d1d1',
@@ -57,17 +93,18 @@ const RegisterComponent: React.FC = () => {
                 padding: '0 10px',
               }}
               placeholder="验证码"
-              type='text'
+              type="text"
               value={verificationCode}
               onChange={(e) => setVerificationCode(e.target.value)}
               required
               endAdornment={
-                <><Divider sx={{ height: 28, m: 0.5 }} orientation="vertical" />
+                <>
+                  <Divider sx={{ height: 28, m: 0.5 }} orientation="vertical" />
                   <Button
                     id="customButton"
                     variant="text"
-                    size='small'
-                    endIcon={<SendIcon sx={{ color: '#6200ea', transform: 'translateY(-1px)'}} />}
+                    size="small"
+                    endIcon={<SendIcon sx={{ color: '#6200ea', transform: 'translateY(-1px)' }} />}
                     sx={{
                       height: '30px !important',
                       ml: 1,
@@ -77,37 +114,37 @@ const RegisterComponent: React.FC = () => {
                       boxShadow: 'none',
                       '&:hover': {
                         backgroundColor: 'transparent',
-                        boxShadow: 'none'
-                      }
+                        boxShadow: 'none',
+                      },
                     }}
                     onClick={handleSendVerificationCode}
-                    disabled={isLoading}
+                    disabled={isCodeSending || !username}
                   >
-                    发送
+                    {isCodeSending ? '发送中...' : '发送'}
                   </Button>
                 </>
               }
             />
           </div>
           <TextField
-            sx={{ bgcolor: 'white', marginTop:'20px' }}
+            sx={{ bgcolor: 'white', marginTop: '20px' }}
             type="password"
             label="密码"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
-            variant='outlined'
-            size='small'
+            variant="outlined"
+            size="small"
           />
           <TextField
-            sx={{ bgcolor: 'white', marginTop:'20px' }}
+            sx={{ bgcolor: 'white', marginTop: '20px' }}
             type="password"
             label="确认密码"
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
             required
-            variant='outlined'
-            size='small'
+            variant="outlined"
+            size="small"
           />
           <button type="submit" disabled={isLoading}>
             {isLoading ? '注册中...' : '注册'}
@@ -117,8 +154,20 @@ const RegisterComponent: React.FC = () => {
           已有账号？<Link href="/login">现在登录</Link>
         </p>
       </div>
+
+      {/* Snackbar 用于显示信息反馈 */}
+      <Snackbar
+        open={snackbarOpen}
+        autoHideDuration={6000}
+        onClose={handleSnackbarClose}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert onClose={handleSnackbarClose} severity={snackbarSeverity} sx={{ width: '100%' }}>
+          {snackbarMessage}
+        </Alert>
+      </Snackbar>
     </div>
   );
-}
+};
 
 export default RegisterComponent;
