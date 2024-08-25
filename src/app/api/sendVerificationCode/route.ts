@@ -24,7 +24,7 @@ export async function POST(request: Request) {
       from: 'Your App <onboarding@resend.dev>',
       to: email,
       subject: '您的验证码',
-      html: `<p>您的验证码是: <strong>${verificationCode}</strong></p><p>此验证码将在1分钟后过期。</p>`
+      html: `<p>您的验证码是: <strong>${verificationCode}</strong></p><p>此验证码将在10分钟后过期。</p>`
     });
 
     if (error) {
