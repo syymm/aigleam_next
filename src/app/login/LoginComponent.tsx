@@ -15,7 +15,7 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 
 const LoginComponent: React.FC = () => {
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -40,7 +40,6 @@ const LoginComponent: React.FC = () => {
     },
   });
 
-  // 注意：handleLogin 函数的定义没有改变，但它现在会被表单提交事件触发
   const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     try {
@@ -49,7 +48,7 @@ const LoginComponent: React.FC = () => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email, password, rememberMe }),
+        body: JSON.stringify({ username, password, rememberMe }),
       });
 
       if (response.ok) {
@@ -73,14 +72,13 @@ const LoginComponent: React.FC = () => {
       <div className="login-component">
         <div className="login-form">
           <h1>Welcome 👋</h1>
-          {/* 修改：添加 onSubmit 属性到 form 元素 */}
           <form onSubmit={handleLogin}>
             <TextField
               sx={{ bgcolor: 'white', marginTop: '0px', borderRadius: '4px' }}
               label="Email"
               type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
               required
               variant="outlined"
               fullWidth
@@ -126,7 +124,6 @@ const LoginComponent: React.FC = () => {
               </label>
               <Link href="/forgotpassword" className="forgot-password">忘记密码了？</Link>
             </div>
-            {/* 修改：确保按钮类型为 'submit' */}
             <Button type="submit" variant="contained" color="primary" fullWidth style={{ marginTop: '20px' }}>
               立即登录
             </Button>
