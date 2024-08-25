@@ -13,9 +13,10 @@ import VisibilityOff from '@mui/icons-material/VisibilityOff';
 import Checkbox from '@mui/material/Checkbox';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
+import { UNSTABLE_REVALIDATE_RENAME_ERROR } from 'next/dist/lib/constants';
 
 const LoginComponent: React.FC = () => {
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -49,7 +50,7 @@ const LoginComponent: React.FC = () => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email, password, rememberMe }),
+        body: JSON.stringify({ username, password, rememberMe }),
       });
 
       if (response.ok) {
@@ -79,8 +80,8 @@ const LoginComponent: React.FC = () => {
               sx={{ bgcolor: 'white', marginTop: '0px', borderRadius: '4px' }}
               label="Email"
               type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
               required
               variant="outlined"
               fullWidth
