@@ -15,7 +15,7 @@ import './RegisterComponent.css';
 import { Divider, Button } from '@mui/material';
 
 const RegisterComponent: React.FC = () => {
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [verificationCode, setVerificationCode] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -23,12 +23,12 @@ const RegisterComponent: React.FC = () => {
   const handleRegister = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     // Implement your register logic here
-    console.log(email, verificationCode, password, confirmPassword);
+    console.log(username, verificationCode, password, confirmPassword);
   };
 
   const handleSendVerificationCode = () => {
     // Implement your logic to send verification code
-    console.log('Sending verification code to', email);
+    console.log('Sending verification code to', username);
   };
 
   return (
@@ -47,8 +47,8 @@ const RegisterComponent: React.FC = () => {
               sx={{ bgcolor: 'white',  width: '100%'}}
               label="Email"
               type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
               required
               variant="outlined"
               size="small"
