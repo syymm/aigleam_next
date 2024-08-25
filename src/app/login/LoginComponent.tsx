@@ -13,7 +13,7 @@ import VisibilityOff from '@mui/icons-material/VisibilityOff';
 import Checkbox from '@mui/material/Checkbox';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { UNSTABLE_REVALIDATE_RENAME_ERROR } from 'next/dist/lib/constants';
+
 
 const LoginComponent: React.FC = () => {
   const [username, setUsername] = useState('');

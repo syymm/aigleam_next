@@ -6,19 +6,15 @@ import Image from 'next/image';
 import TextField from '@mui/material/TextField';
 import InputBase from '@mui/material/InputBase';
 import SendIcon from '@mui/icons-material/Send';
-import { Divider, Button, Snackbar, Alert } from '@mui/material';
+import { Divider, Button } from '@mui/material';
 import './RegisterComponent.css';
-import { useRouter } from 'next/navigation';
 
 const RegisterComponent: React.FC = () => {
   const [username, setUsername] = useState('');
   const [verificationCode, setVerificationCode] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [message, setMessage] = useState('');
-  const [openSnackbar, setOpenSnackbar] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const router = useRouter();
 
   const handleRegister = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -121,16 +117,6 @@ const RegisterComponent: React.FC = () => {
           已有账号？<Link href="/login">现在登录</Link>
         </p>
       </div>
-      <Snackbar
-        open={openSnackbar}
-        autoHideDuration={6000}
-        onClose={() => setOpenSnackbar(false)}
-        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
-      >
-        <Alert onClose={() => setOpenSnackbar(false)} severity={message.includes('成功') ? 'success' : 'error'} sx={{ width: '100%' }}>
-          {message}
-        </Alert>
-      </Snackbar>
     </div>
   );
 }
