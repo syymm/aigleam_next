@@ -6,16 +6,21 @@ import Image from 'next/image';
 import TextField from '@mui/material/TextField';
 import InputBase from '@mui/material/InputBase';
 import SendIcon from '@mui/icons-material/Send';
+import { Divider, Button, Snackbar, Alert } from '@mui/material';
 import './RegisterComponent.css';
-import { Divider, Button } from '@mui/material';
+import { useRouter } from 'next/navigation';
 
 const RegisterComponent: React.FC = () => {
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [verificationCode, setVerificationCode] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [message, setMessage] = useState('');
+  const [openSnackbar, setOpenSnackbar] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const router = useRouter();
 
-  const handleRegister = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleRegister = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     // Implement your register logic here
     console.log(email, verificationCode, password, confirmPassword);
@@ -29,11 +34,7 @@ const RegisterComponent: React.FC = () => {
   return (
     <div className="register-component">
       <div className="register-image">
-      {<Image
-            src="/image/2.png"
-            alt="RegisterImage"
-            fill
-          />}
+        {<Image src="/image/2.png" alt="RegisterImage" fill />}
       </div>
       <div className="register-form">
         <h1 className="register-title">Register Now✍️</h1> 
@@ -50,7 +51,8 @@ const RegisterComponent: React.FC = () => {
             />
           <div className="verification-code-section">
             <InputBase
-              sx={{ bgcolor: 'white',
+              sx={{
+                bgcolor: 'white',
                 marginTop:'20px',
                 height: '40px',
                 width: '100%',
@@ -82,15 +84,17 @@ const RegisterComponent: React.FC = () => {
                         boxShadow: 'none'
                       }
                     }}
+                    onClick={handleSendVerificationCode}
+                    disabled={isLoading}
                   >
-                    send
-                  </Button></>
+                    发送
+                  </Button>
+                </>
               }
             />
-            {/* <button type="button" onClick={handleSendVerificationCode}>发送验证码</button> */}
           </div>
           <TextField
-            sx={{ bgcolor: 'white'}}
+            sx={{ bgcolor: 'white', marginTop:'20px' }}
             type="password"
             label="密码"
             value={password}
@@ -100,7 +104,7 @@ const RegisterComponent: React.FC = () => {
             size='small'
           />
           <TextField
-            sx={{ bgcolor: 'white',marginTop:'20px'}}
+            sx={{ bgcolor: 'white', marginTop:'20px' }}
             type="password"
             label="确认密码"
             value={confirmPassword}
@@ -109,12 +113,24 @@ const RegisterComponent: React.FC = () => {
             variant='outlined'
             size='small'
           />
-          <button type="submit">注册</button>
+          <button type="submit" disabled={isLoading}>
+            {isLoading ? '注册中...' : '注册'}
+          </button>
         </form>
         <p>
           已有账号？<Link href="/login">现在登录</Link>
         </p>
       </div>
+      <Snackbar
+        open={openSnackbar}
+        autoHideDuration={6000}
+        onClose={() => setOpenSnackbar(false)}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert onClose={() => setOpenSnackbar(false)} severity={message.includes('成功') ? 'success' : 'error'} sx={{ width: '100%' }}>
+          {message}
+        </Alert>
+      </Snackbar>
     </div>
   );
 }

@@ -6,7 +6,7 @@ interface VerificationCode {
   const codeStore: Map<string, VerificationCode> = new Map();
   
   export const saveVerificationCode = (email: string, code: string) => {
-    const expiresAt = new Date(Date.now() + 1 * 60 * 1000); // 10 分钟后过期
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 分钟后过期
     codeStore.set(email, { code, expiresAt });
   };
   
