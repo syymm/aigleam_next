@@ -22,7 +22,41 @@ const RegisterComponent: React.FC = () => {
 
   const handleRegister = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    console.log(username, verificationCode, password, confirmPassword);
+    
+    if (password !== confirmPassword) {
+      setSnackbarMessage('密码不匹配');
+      setSnackbarSeverity('error');
+      setSnackbarOpen(true);
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      console.log('Sending registration request:', { username, verificationCode }); // 添加日志
+      const response = await fetch('/api/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ username, verificationCode, password }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || '注册失败');
+      }
+
+      setSnackbarMessage('注册成功！');
+      setSnackbarSeverity('success');
+      // 可以在这里添加注册成功后的逻辑，比如跳转到登录页面
+    } catch (error) {
+      console.error('注册时出错:', error);
+      setSnackbarMessage(error instanceof Error ? error.message : '注册失败，请稍后再试');
+      setSnackbarSeverity('error');
+    } finally {
+      setIsLoading(false);
+      setSnackbarOpen(true);
+    }
   };
 
   const handleSendVerificationCode = async () => {
@@ -155,7 +189,6 @@ const RegisterComponent: React.FC = () => {
         </p>
       </div>
 
-      {/* Snackbar 用于显示信息反馈 */}
       <Snackbar
         open={snackbarOpen}
         autoHideDuration={6000}

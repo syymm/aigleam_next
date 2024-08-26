@@ -1,31 +1,37 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Resend } from 'resend';
-import { verificationCodeManager } from '../../../utils/verificationCode';
+import { verificationCodeManager } from '../../utils/verificationCode';
 
-// 初始化Resend客户端
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-// 设置定期清理任务（每小时运行一次）
 verificationCodeManager.setupCleanupTask();
 
 export async function POST(req: NextRequest) {
+  console.log('Received request to send verification code');
+
   const { username } = await req.json();
+  console.log(`Requested verification code for username: ${username}`);
 
   if (!username) {
+    console.log('Error: Email is required');
     return NextResponse.json({ message: '邮箱是必需的' }, { status: 400 });
   }
 
   try {
     const verificationCode = verificationCodeManager.generateCode();
-    verificationCodeManager.storeCode(username, verificationCode);
+    console.log(`Generated verification code: ${verificationCode}`);
 
-    // 发送邮件
+    verificationCodeManager.storeCode(username, verificationCode);
+    console.log(`Stored verification code for ${username}`);
+
+    console.log(`Attempting to send email to ${username}`);
     await resend.emails.send({
-        from: '你的应用 <onboarding@resend.dev>',
-        to: username,
-        subject: '你的验证码',
-        html: `<p>你的验证码是: <strong>${verificationCode}</strong></p>`
-      });
+      from: '你的应用 <onboarding@resend.dev>',
+      to: username,
+      subject: '你的验证码',
+      html: `<p>你的验证码是: <strong>${verificationCode}</strong></p>`
+    });
+    console.log(`Email sent successfully to ${username}`);
 
     return NextResponse.json({ message: '验证码发送成功' });
   } catch (error) {
