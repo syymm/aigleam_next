@@ -106,7 +106,7 @@ const RegisterComponent: React.FC = () => {
         <h1 className="register-title">Register Now✍️</h1> 
         <form onSubmit={handleRegister}>
           <TextField
-            sx={{ bgcolor: 'white', width: '100%' }}
+            sx={{ bgcolor: 'white', width: '100%'}}
             label="Email"
             type="email"
             value={username}
@@ -142,7 +142,7 @@ const RegisterComponent: React.FC = () => {
                     sx={{
                       height: '30px !important',
                       ml: 1,
-                      transform: 'translateY(-10px)',
+                      transform: 'translateY(-15px)',
                       color: '#6200ea',
                       backgroundColor: 'transparent',
                       boxShadow: 'none',
@@ -161,7 +161,7 @@ const RegisterComponent: React.FC = () => {
             />
           </div>
           <TextField
-            sx={{ bgcolor: 'white', marginTop: '20px' }}
+            sx={{ bgcolor: 'white' }}
             type="password"
             label="密码"
             value={password}

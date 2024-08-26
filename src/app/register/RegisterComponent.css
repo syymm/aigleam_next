@@ -33,7 +33,15 @@
     object-position: center calc(50%); /* 调整这个值来改变视点 */
   }
 
-.register-title {
+  @font-face {
+    font-family: 'Playwrite US Modern';
+    src: url('/fonts/Playwrite_US_Modern/PlaywriteUSModern-VariableFont_wght.ttf') format('truetype');
+    font-weight: 100 900;
+    font-style: normal;
+  }
+  .register-title {
+    font-family: "Playwrite US Modern", cursive;
+    font-optical-sizing: auto;
     margin-bottom: 2rem; /* 增加标题下的间距 */
     text-align: right; /* 右对齐 */
 }
@@ -102,7 +110,7 @@
     border: none;
     border-radius: 4px;
     cursor: pointer;
-    margin-top: 20px;
+    margin-top: 2rem;
     transition: background-color 0.3s ease;
 }
 
