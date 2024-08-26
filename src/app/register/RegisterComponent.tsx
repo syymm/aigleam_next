@@ -6,6 +6,10 @@ import Image from 'next/image';
 import TextField from '@mui/material/TextField';
 import InputBase from '@mui/material/InputBase';
 import SendIcon from '@mui/icons-material/Send';
+import IconButton from '@mui/material/IconButton';
+import InputAdornment from '@mui/material/InputAdornment';
+import Visibility from '@mui/icons-material/Visibility';
+import VisibilityOff from '@mui/icons-material/VisibilityOff';
 import { Divider, Button, Snackbar, Alert } from '@mui/material';
 import './RegisterComponent.css';
 
@@ -19,6 +23,11 @@ const RegisterComponent: React.FC = () => {
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [snackbarSeverity, setSnackbarSeverity] = useState<'success' | 'error'>('success');
+  const [showPassword, setShowPassword] = useState(false);
+
+  const handleClickShowPassword = () => {
+    setShowPassword((show) => !show);
+  };
 
   const handleRegister = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -106,7 +115,7 @@ const RegisterComponent: React.FC = () => {
         <h1 className="register-title">Register Now✍️</h1> 
         <form onSubmit={handleRegister}>
           <TextField
-            sx={{ bgcolor: 'white', width: '100%'}}
+            sx={{ bgcolor: 'white', width: '100%',marginTop:'10px',borderRadius:'4px'}}
             label="Email"
             type="email"
             value={username}
@@ -119,7 +128,7 @@ const RegisterComponent: React.FC = () => {
             <InputBase
               sx={{
                 bgcolor: 'white',
-                marginTop: '20px',
+                marginTop: '15px',
                 height: '40px',
                 width: '100%',
                 border: '1px solid #d1d1d1',
@@ -142,7 +151,7 @@ const RegisterComponent: React.FC = () => {
                     sx={{
                       height: '30px !important',
                       ml: 1,
-                      transform: 'translateY(-15px)',
+                      transform: 'translateY(-12px)',
                       color: '#6200ea',
                       backgroundColor: 'transparent',
                       boxShadow: 'none',
@@ -161,7 +170,7 @@ const RegisterComponent: React.FC = () => {
             />
           </div>
           <TextField
-            sx={{ bgcolor: 'white' }}
+            sx={{ bgcolor: 'white',marginTop: '-5px',borderRadius:'4px'}}
             type="password"
             label="密码"
             value={password}
@@ -169,9 +178,24 @@ const RegisterComponent: React.FC = () => {
             required
             variant="outlined"
             size="small"
+            margin="normal"
+            InputProps={{
+              endAdornment: (
+                <InputAdornment position="end">
+                  <IconButton
+                    aria-label="toggle password visibility"
+                    onClick={handleClickShowPassword}
+                    edge="end"
+                    style={{ backgroundColor: 'transparent', padding: 0, margin: 'auto 0', top: '50%', transform: 'translateY(-50%)', color: '#666' }}
+                  >
+                    {showPassword ? <VisibilityOff style={{ fontSize: 24 }} /> : <Visibility style={{ fontSize: 24 }} />}
+                  </IconButton>
+                </InputAdornment>
+              ),
+            }}
           />
           <TextField
-            sx={{ bgcolor: 'white', marginTop: '20px' }}
+            sx={{ bgcolor: 'white', marginTop: '10px',borderRadius:'4px' }}
             type="password"
             label="确认密码"
             value={confirmPassword}
@@ -179,6 +203,21 @@ const RegisterComponent: React.FC = () => {
             required
             variant="outlined"
             size="small"
+            margin="normal"
+            InputProps={{
+              endAdornment: (
+                <InputAdornment position="end">
+                  <IconButton
+                    aria-label="toggle password visibility"
+                    onClick={handleClickShowPassword}
+                    edge="end"
+                    style={{ backgroundColor: 'transparent', padding: 0, margin: 'auto 0', top: '50%', transform: 'translateY(-50%)', color: '#666' }}
+                  >
+                    {showPassword ? <VisibilityOff style={{ fontSize: 24 }} /> : <Visibility style={{ fontSize: 24 }} />}
+                  </IconButton>
+                </InputAdornment>
+              ),
+            }}
           />
           <button type="submit" disabled={isLoading}>
             {isLoading ? '注册中...' : '注册'}
