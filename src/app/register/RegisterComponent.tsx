@@ -171,7 +171,7 @@ const RegisterComponent: React.FC = () => {
           </div>
           <TextField
             sx={{ bgcolor: 'white',marginTop: '-5px',borderRadius:'4px'}}
-            type="password"
+            type={showPassword ? 'text' : 'password'}
             label="密码"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
@@ -196,7 +196,7 @@ const RegisterComponent: React.FC = () => {
           />
           <TextField
             sx={{ bgcolor: 'white', marginTop: '10px',borderRadius:'4px' }}
-            type="password"
+            type={showPassword ? 'text' : 'password'}
             label="确认密码"
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
