@@ -7,17 +7,12 @@
     overflow: hidden;
   }
   
-  #box {
+  .dynamic-background {
     position: absolute;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    z-index: 1; /* 背景层 */
-  }
-  
-  .loginpage > div {
-    position: relative;
-    z-index: 2; /* 确保内容在背景上层 */
+    z-index: -1; /* Ensure the background is behind other content */
   }
   
