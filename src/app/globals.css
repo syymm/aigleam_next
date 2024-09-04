@@ -27,3 +27,10 @@ body {
     text-wrap: balance;
   }
 }
+
+/* 针对自动填充的输入框样式 */
+input:-webkit-autofill {
+  -webkit-box-shadow: 0 0 0 30px white inset !important; /* 设置背景颜色 */
+  box-shadow: 0 0 0 30px white inset !important; /* 设置背景颜色 */
+  -webkit-text-fill-color: black; /* 设置文本颜色 */
+}

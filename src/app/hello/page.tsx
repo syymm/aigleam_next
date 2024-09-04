@@ -2,8 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import './ChatPage.css'; 
+import ChatPageComponent from './ChatPageComponent';
 
-export default function HelloPage() {
+export default function ChatPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date().toLocaleTimeString());
   const router = useRouter();
@@ -39,9 +41,10 @@ export default function HelloPage() {
   }
 
   return (
-    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', flexDirection: 'column' }}>
+    <div className="chatpage">
       <h1>Hello</h1>
       <p>Current time: {currentTime}</p>
+      <ChatPageComponent />
     </div>
   );
 }
