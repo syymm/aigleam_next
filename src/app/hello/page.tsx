@@ -1,13 +1,14 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import './ChatPage.css'; 
+import { ThemeProvider } from '../contexts/ThemeContext';
 import ChatPageComponent from './ChatPageComponent';
+import styles from './styles/ChatPage.module.css';
 
 export default function ChatPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [currentTime, setCurrentTime] = useState(new Date().toLocaleTimeString());
+  const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
 
   useEffect(() => {
@@ -22,29 +23,27 @@ export default function ChatPage() {
       } catch (error) {
         console.error('Auth check failed:', error);
         router.push('/login');
+      } finally {
+        setIsLoading(false);
       }
     };
 
     checkAuth();
   }, [router]);
 
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentTime(new Date().toLocaleTimeString());
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, []);
+  if (isLoading) {
+    return <div className={styles.loadingScreen}>正在加载...</div>;
+  }
 
   if (!isAuthenticated) {
-    return <div>Checking authentication...</div>;
+    return null; // 或者可以返回一个加载指示器
   }
 
   return (
-    <div className="chatpage">
-      <h1>Hello</h1>
-      <p>Current time: {currentTime}</p>
-      <ChatPageComponent />
-    </div>
+    <ThemeProvider>
+      <div className={styles.chatpage}>
+        <ChatPageComponent />
+      </div>
+    </ThemeProvider>
   );
 }

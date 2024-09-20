@@ -1,0 +1,57 @@
+.chatpage {
+  display: flex;
+  flex-direction: column;
+  height: 100vh; 
+  overflow: hidden; 
+}
+
+.sidebar {
+  width: 260px;
+}
+
+.mainContent {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.chatContainer {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+}
+
+.inputContainer {
+  padding: 10px 20px;
+}
+
+.logo {
+  margin-bottom: 40px;
+}
+
+.welcomeOptions {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+  margin-bottom: 40px;
+}
+
+.welcomeOption {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.icon {
+  font-size: 24px;
+  margin-bottom: 10px;
+}
+
+.title {
+  text-align: center;
+}
