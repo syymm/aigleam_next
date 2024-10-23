@@ -13,17 +13,31 @@ import VisibilityOff from '@mui/icons-material/VisibilityOff';
 import Checkbox from '@mui/material/Checkbox';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
+// 新增: 导入 Snackbar 和 Alert 组件
+import Snackbar from '@mui/material/Snackbar';
+import Alert from '@mui/material/Alert';
 
+// 新增: 定义通知类型
+interface SnackbarState {
+  open: boolean;
+  message: string;
+  severity: 'success' | 'error';
+}
 
 const LoginComponent: React.FC = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  // 新增: Snackbar 状态
+  const [snackbar, setSnackbar] = useState<SnackbarState>({
+    open: false,
+    message: '',
+    severity: 'success'
+  });
   const router = useRouter();
 
   useEffect(() => {
-    // 检查是否已经登录
     const checkAuth = async () => {
       const response = await fetch('/api/check-auth');
       if (response.ok) {
@@ -41,6 +55,20 @@ const LoginComponent: React.FC = () => {
     },
   });
 
+  // 新增: 显示通知的辅助函数
+  const showNotification = (message: string, severity: 'success' | 'error') => {
+    setSnackbar({
+      open: true,
+      message,
+      severity,
+    });
+  };
+
+  // 新增: 处理 Snackbar 关闭
+  const handleSnackbarClose = () => {
+    setSnackbar(prev => ({ ...prev, open: false }));
+  };
+
   const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     try {
@@ -53,16 +81,21 @@ const LoginComponent: React.FC = () => {
       });
 
       if (response.ok) {
-        // 登录成功，重定向到主页或仪表板
-        router.push('/hello');
+        // 替换: 使用 Snackbar 显示成功消息
+        showNotification('登录成功', 'success');
+        // 短暂延迟后跳转，让用户能看到成功消息
+        setTimeout(() => {
+          router.push('/hello');
+        }, 1000);
       } else {
-        // 处理登录失败
         const data = await response.json();
-        alert(data.error || 'Login failed');
+        // 替换: 使用 Snackbar 显示错误消息
+        showNotification(data.error || '登录失败', 'error');
       }
     } catch (error) {
       console.error('Login error:', error);
-      alert('An error occurred during login');
+      // 替换: 使用 Snackbar 显示错误消息
+      showNotification('登录过程中发生错误', 'error');
     }
   };
 
@@ -140,6 +173,23 @@ const LoginComponent: React.FC = () => {
             fill
           />}
         </div>
+
+        {/* 新增: Snackbar 组件 */}
+        <Snackbar
+          open={snackbar.open}
+          autoHideDuration={3000}
+          onClose={handleSnackbarClose}
+          anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+        >
+          <Alert
+            onClose={handleSnackbarClose}
+            severity={snackbar.severity}
+            sx={{ width: '100%' }}
+            variant="filled"
+          >
+            {snackbar.message}
+          </Alert>
+        </Snackbar>
       </div>
     </ThemeProvider>
   );
