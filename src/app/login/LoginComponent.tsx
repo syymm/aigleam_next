@@ -16,7 +16,6 @@ import Image from 'next/image';
 import Snackbar from '@mui/material/Snackbar';
 import Alert from '@mui/material/Alert';
 
-// 定义通知类型
 interface SnackbarState {
   open: boolean;
   message: string;
@@ -67,6 +66,18 @@ const LoginComponent: React.FC = () => {
 
   const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+
+    // 表单验证
+    if (!username.trim()) {
+      showNotification('请输入邮箱地址', 'error');
+      return;
+    }
+
+    if (!password.trim()) {
+      showNotification('请输入密码', 'error');
+      return;
+    }
+
     try {
       const response = await fetch('/api/login', {
         method: 'POST',
@@ -84,7 +95,6 @@ const LoginComponent: React.FC = () => {
           router.push('/hello');
         }, 1000);
       } else {
-        // 处理具体的错误情况
         let errorMessage = '登录失败';
         
         switch (data.error) {
@@ -123,7 +133,6 @@ const LoginComponent: React.FC = () => {
               type="email"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              required
               variant="outlined"
               fullWidth
               margin="normal"
@@ -134,7 +143,6 @@ const LoginComponent: React.FC = () => {
               type={showPassword ? 'text' : 'password'}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              required
               variant="outlined"
               fullWidth
               margin="normal"
