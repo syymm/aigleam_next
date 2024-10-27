@@ -1,16 +1,18 @@
 import React, { useState, KeyboardEvent, useRef, ChangeEvent } from 'react';
-import { TextField, IconButton, Box, useTheme } from '@mui/material';
+import { TextField, IconButton, Box } from '@mui/material';
 import SendIcon from '@mui/icons-material/Send';
 import AttachFileIcon from '@mui/icons-material/AttachFile';
+import { useTheme } from '../../../contexts/ThemeContext'; // 更新导入路径
+import styles from '../../styles/ChatPage.module.css';
 
 interface InputAreaProps {
   onSendMessage: (content: string, file?: File) => void;
 }
 
 const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
+  const { theme, themeMode } = useTheme(); // 使用自定义的 useTheme
   const [inputValue, setInputValue] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const theme = useTheme();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleSend = () => {
@@ -39,21 +41,33 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
   };
 
   return (
-    <Box sx={{ 
-      padding: 2, 
-      backgroundColor: theme.palette.background.default,
-      display: 'flex',
-      justifyContent: 'center',
-    }}>
+    <Box 
+      className={themeMode === 'dark' ? styles.dark : styles.light}
+      sx={{ 
+        padding: 2, 
+        backgroundColor: theme.palette.background.default,
+        display: 'flex',
+        justifyContent: 'center',
+      }}
+    >
       <Box sx={{ 
         display: 'flex', 
         alignItems: 'center',
         backgroundColor: theme.palette.background.paper,
-        borderRadius: 1,
-        padding: 1,
+        borderRadius: '16px',
+        padding: '8px 16px',
         width: '70%',
+        boxShadow: '0 2px 10px rgba(0, 0, 0, 0.1)',
+        border: `1px solid ${theme.palette.divider}`,
       }}>
-        <IconButton onClick={handleAttachClick} color="primary">
+        <IconButton 
+          onClick={handleAttachClick} 
+          sx={{ 
+            color: theme.palette.primary.main,
+            padding: '8px',
+            '&:hover': { backgroundColor: 'transparent' }
+          }}
+        >
           <AttachFileIcon />
         </IconButton>
         <TextField
@@ -64,17 +78,53 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
           onKeyPress={handleKeyPress}
           InputProps={{
             disableUnderline: true,
-            style: { color: theme.palette.text.primary },
+            style: { 
+              color: theme.palette.text.primary,
+              scrollbarWidth: 'thin',
+              scrollbarColor: `${theme.palette.grey[400]} ${theme.palette.background.paper}`,
+            },
           }}
-          placeholder={selectedFile ? `已选择文件: ${selectedFile.name}` : "输入消息..."}
+          placeholder="输入消息..."
+          multiline
+          maxRows={5}
+          sx={{
+            flexGrow: 1,
+            '& .MuiInputBase-input': {
+              padding: '12px 8px',
+              '&::placeholder': {
+                color: theme.palette.text.secondary,
+                opacity: 0.7,
+              },
+              '&::-webkit-scrollbar': {
+                width: '8px',
+              },
+              '&::-webkit-scrollbar-track': {
+                backgroundColor: theme.palette.background.paper,
+              },
+              '&::-webkit-scrollbar-thumb': {
+                backgroundColor: theme.palette.grey[400],
+                borderRadius: '4px',
+              },
+              '&::-webkit-scrollbar-thumb:hover': {
+                backgroundColor: theme.palette.grey[600],
+              },
+            },
+            '& .MuiInputBase-root': {
+              backgroundColor: 'transparent',
+              overflowY: 'auto',
+              display: 'flex',
+              alignItems: 'center',
+            },
+          }}
         />
-        <input
-          type="file"
-          ref={fileInputRef}
-          style={{ display: 'none' }}
-          onChange={handleFileSelect}
-        />
-        <IconButton onClick={handleSend} color="primary">
+        <IconButton 
+          onClick={handleSend} 
+          sx={{ 
+            color: theme.palette.primary.main,
+            padding: '8px',
+            '&:hover': { backgroundColor: 'transparent' }
+          }}
+        >
           <SendIcon />
         </IconButton>
       </Box>

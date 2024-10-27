@@ -6,13 +6,21 @@ import CssBaseline from '@mui/material/CssBaseline';
 
 export const themeColors = {
   light: {
-    // 保持原有的浅色主题配置不变
+    background: {
+      default: '#ffffff',
+      paper: '#f5f5f5',
+      chat: '#e0e0e0',
+    },
+    text: {
+      primary: '#000000',
+      secondary: '#757575',
+    },
   },
   dark: {
     background: {
       default: '#202020',
       paper: '#101010',
-      chat: '#181818',
+      chat: '#303030',
     },
     text: {
       primary: '#ffffff',
@@ -33,6 +41,10 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [themeMode, setThemeMode] = useState<ThemeMode>('dark');
+
+  useEffect(() => {
+    document.body.classList.toggle('dark-theme', themeMode === 'dark');
+  }, [themeMode]);
 
   const toggleTheme = () => {
     setThemeMode((prevTheme) => (prevTheme === 'light' ? 'dark' : 'light'));

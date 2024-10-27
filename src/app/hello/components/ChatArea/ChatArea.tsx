@@ -22,6 +22,9 @@ const MessagePaper = styled(Paper)(({ theme }) => ({
   marginBottom: theme.spacing(2),
   maxWidth: '70%',
   position: 'relative',
+  backgroundColor: theme.palette.mode === 'dark' 
+    ? theme.palette.grey[900] 
+    : theme.palette.grey[100],
 }));
 
 const ChatArea: React.FC<ChatAreaProps> = ({ messages, onBestResponse, onErrorResponse, onQuoteReply }) => {
@@ -70,6 +73,19 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, onBestResponse, onErrorRe
       flexDirection: 'column',
       alignItems: 'center',
       backgroundColor: theme.palette.background.default,
+      '&::-webkit-scrollbar': {
+        width: '16px',
+      },
+      '&::-webkit-scrollbar-track': {
+        backgroundColor: 'var(--scrollbar-track)',
+      },
+      '&::-webkit-scrollbar-thumb': {
+        backgroundColor: 'var(--scrollbar-thumb)',
+        borderRadius: '4px',
+      },
+      '&::-webkit-scrollbar-thumb:hover': {
+        backgroundColor: 'var(--scrollbar-thumb-hover)',
+      },
     }}>
       <Box sx={{ width: '70%', maxWidth: '70%' }}>
         {messages.map((message) => (
@@ -81,7 +97,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, onBestResponse, onErrorRe
             }}
           >
             <MessagePaper elevation={1} onMouseUp={handleTextSelection}>
-              <Typography>{message.content}</Typography>
+              <Typography color="text.primary">{message.content}</Typography>
               {!message.isUser && (
                 <Box sx={{ position: 'absolute', right: 8, bottom: 8, display: 'flex' }}>
                   <IconButton size="small" onClick={() => handleReadAloud(message.content)}>
