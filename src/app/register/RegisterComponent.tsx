@@ -14,6 +14,12 @@ import { Divider, Button, Snackbar, Alert } from '@mui/material';
 import { useRouter } from 'next/navigation';
 import './RegisterComponent.css';
 
+interface SnackbarState {
+  open: boolean;
+  message: string;
+  severity: 'success' | 'error';
+}
+
 const RegisterComponent: React.FC = () => {
   const [username, setUsername] = useState('');
   const [verificationCode, setVerificationCode] = useState('');
@@ -79,7 +85,7 @@ const RegisterComponent: React.FC = () => {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || '注册失败');
+        throw new Error(data.message);
       }
 
       // 注册成功，直接跳转到登录页
@@ -89,18 +95,22 @@ const RegisterComponent: React.FC = () => {
       let errorMessage = '注册失败，请稍后再试';
       
       if (error instanceof Error) {
+        // 匹配后端可能返回的错误信息
         switch (error.message) {
-          case 'User already exists':
-            errorMessage = '该邮箱已被注册';
+          case 'All fields are required':
+            errorMessage = '请填写所有必填项';
             break;
           case 'Invalid or expired verification code':
             errorMessage = '验证码无效或已过期';
             break;
-          case 'All fields are required':
-            errorMessage = '请填写所有必填项';
+          case 'User already exists':
+            errorMessage = '该邮箱已被注册';
+            break;
+          case 'Error registering user':
+            errorMessage = '注册失败，请稍后重试';
             break;
           default:
-            errorMessage = error.message;
+            errorMessage = error.message || '注册失败，请稍后再试';
         }
       }
       
@@ -128,27 +138,19 @@ const RegisterComponent: React.FC = () => {
         body: JSON.stringify({ username }),
       });
 
+      const data = await response.json();
+
       if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.message || '验证码发送失败');
+        throw new Error(data.message);
       }
 
-      showNotification('验证码已发送，请检查您的邮箱', 'success');
+      showNotification(data.message || '验证码已发送，请检查您的邮箱', 'success');
     } catch (error) {
       console.error('发送验证码时出错:', error);
       let errorMessage = '发送验证码失败，请稍后再试';
       
       if (error instanceof Error) {
-        switch (error.message) {
-          case 'Email already registered':
-            errorMessage = '该邮箱已被注册';
-            break;
-          case 'Too many attempts':
-            errorMessage = '发送次数过多，请稍后再试';
-            break;
-          default:
-            errorMessage = error.message;
-        }
+        errorMessage = error.message || '发送验证码失败，请稍后再试';
       }
       
       showNotification(errorMessage, 'error');
@@ -170,7 +172,7 @@ const RegisterComponent: React.FC = () => {
         <h1 className="register-title">Register Now✍️</h1> 
         <form onSubmit={handleRegister}>
           <TextField
-            sx={{ bgcolor: 'white', width: '100%',marginTop:'10px',borderRadius:'4px'}}
+            sx={{ bgcolor: 'white', width: '100%', marginTop: '10px', borderRadius: '4px'}}
             label="Email"
             type="email"
             value={username}
@@ -225,7 +227,7 @@ const RegisterComponent: React.FC = () => {
             />
           </div>
           <TextField
-            sx={{ bgcolor: 'white',marginTop: '-5px',borderRadius:'4px'}}
+            sx={{ bgcolor: 'white', marginTop: '-5px', borderRadius: '4px'}}
             type={showPassword ? 'text' : 'password'}
             label="密码"
             value={password}
@@ -250,7 +252,7 @@ const RegisterComponent: React.FC = () => {
             }}
           />
           <TextField
-            sx={{ bgcolor: 'white', marginTop: '10px',borderRadius:'4px' }}
+            sx={{ bgcolor: 'white', marginTop: '10px', borderRadius: '4px' }}
             type={showPassword ? 'text' : 'password'}
             label="确认密码"
             value={confirmPassword}
