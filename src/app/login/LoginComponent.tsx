@@ -90,10 +90,7 @@ const LoginComponent: React.FC = () => {
       const data = await response.json();
 
       if (response.ok) {
-        showNotification('登录成功', 'success');
-        setTimeout(() => {
-          router.push('/hello');
-        }, 1000);
+        router.push('/hello');  // 登录成功直接跳转，不显示 snackbar
       } else {
         let errorMessage = '登录失败';
         
