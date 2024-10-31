@@ -11,6 +11,7 @@ import InputAdornment from '@mui/material/InputAdornment';
 import Visibility from '@mui/icons-material/Visibility';
 import VisibilityOff from '@mui/icons-material/VisibilityOff';
 import { Divider, Button, Snackbar, Alert } from '@mui/material';
+import { useRouter } from 'next/navigation';
 import './RegisterComponent.css';
 
 const RegisterComponent: React.FC = () => {
@@ -24,24 +25,49 @@ const RegisterComponent: React.FC = () => {
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [snackbarSeverity, setSnackbarSeverity] = useState<'success' | 'error'>('success');
   const [showPassword, setShowPassword] = useState(false);
+  const router = useRouter();
 
   const handleClickShowPassword = () => {
     setShowPassword((show) => !show);
   };
 
+  const showNotification = (message: string, severity: 'success' | 'error') => {
+    setSnackbarMessage(message);
+    setSnackbarSeverity(severity);
+    setSnackbarOpen(true);
+  };
+
   const handleRegister = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     
+    // 表单验证
+    if (!username.trim()) {
+      showNotification('请输入邮箱地址', 'error');
+      return;
+    }
+
+    if (!verificationCode.trim()) {
+      showNotification('请输入验证码', 'error');
+      return;
+    }
+
+    if (!password.trim()) {
+      showNotification('请输入密码', 'error');
+      return;
+    }
+
+    if (password.length < 6) {
+      showNotification('密码长度不能少于6位', 'error');
+      return;
+    }
+    
     if (password !== confirmPassword) {
-      setSnackbarMessage('密码不匹配');
-      setSnackbarSeverity('error');
-      setSnackbarOpen(true);
+      showNotification('两次输入的密码不一致', 'error');
       return;
     }
 
     setIsLoading(true);
     try {
-      console.log('Sending registration request:', { username, verificationCode }); // 添加日志
       const response = await fetch('/api/register', {
         method: 'POST',
         headers: {
@@ -50,29 +76,45 @@ const RegisterComponent: React.FC = () => {
         body: JSON.stringify({ username, verificationCode, password }),
       });
 
+      const data = await response.json();
+
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || '注册失败');
+        throw new Error(data.message || '注册失败');
       }
 
-      setSnackbarMessage('注册成功！');
-      setSnackbarSeverity('success');
-      // 可以在这里添加注册成功后的逻辑，比如跳转到登录页面
+      // 注册成功，直接跳转到登录页
+      router.push('/login');
     } catch (error) {
       console.error('注册时出错:', error);
-      setSnackbarMessage(error instanceof Error ? error.message : '注册失败，请稍后再试');
-      setSnackbarSeverity('error');
+      let errorMessage = '注册失败，请稍后再试';
+      
+      if (error instanceof Error) {
+        switch (error.message) {
+          case 'User already exists':
+            errorMessage = '该邮箱已被注册';
+            break;
+          case 'Invalid or expired verification code':
+            errorMessage = '验证码无效或已过期';
+            break;
+          case 'All fields are required':
+            errorMessage = '请填写所有必填项';
+            break;
+          default:
+            errorMessage = error.message;
+        }
+      }
+      
+      showNotification(errorMessage, 'error');
     } finally {
       setIsLoading(false);
-      setSnackbarOpen(true);
     }
   };
 
   const handleSendVerificationCode = async () => {
-    if (!username) {
-      setSnackbarMessage('请输入邮箱地址');
-      setSnackbarSeverity('error');
-      setSnackbarOpen(true);
+    // 邮箱格式验证
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!username || !emailRegex.test(username)) {
+      showNotification('请输入有效的邮箱地址', 'error');
       return;
     }
     
@@ -87,17 +129,30 @@ const RegisterComponent: React.FC = () => {
       });
 
       if (!response.ok) {
-        throw new Error('验证码发送失败');
+        const data = await response.json();
+        throw new Error(data.message || '验证码发送失败');
       }
 
-      setSnackbarMessage('验证码已发送，请检查您的邮箱');
-      setSnackbarSeverity('success');
+      showNotification('验证码已发送，请检查您的邮箱', 'success');
     } catch (error) {
       console.error('发送验证码时出错:', error);
-      setSnackbarMessage('发送验证码失败，请稍后再试');
-      setSnackbarSeverity('error');
+      let errorMessage = '发送验证码失败，请稍后再试';
+      
+      if (error instanceof Error) {
+        switch (error.message) {
+          case 'Email already registered':
+            errorMessage = '该邮箱已被注册';
+            break;
+          case 'Too many attempts':
+            errorMessage = '发送次数过多，请稍后再试';
+            break;
+          default:
+            errorMessage = error.message;
+        }
+      }
+      
+      showNotification(errorMessage, 'error');
     } finally {
-      setSnackbarOpen(true);
       setIsCodeSending(false);
     }
   };
@@ -230,11 +285,16 @@ const RegisterComponent: React.FC = () => {
 
       <Snackbar
         open={snackbarOpen}
-        autoHideDuration={6000}
+        autoHideDuration={3000}
         onClose={handleSnackbarClose}
         anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
       >
-        <Alert onClose={handleSnackbarClose} severity={snackbarSeverity} sx={{ width: '100%' }}>
+        <Alert 
+          onClose={handleSnackbarClose} 
+          severity={snackbarSeverity} 
+          sx={{ width: '100%' }}
+          variant="filled"
+        >
           {snackbarMessage}
         </Alert>
       </Snackbar>
