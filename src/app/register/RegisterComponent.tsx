@@ -172,7 +172,15 @@ const RegisterComponent: React.FC = () => {
         <h1 className="register-title">Register Now✍️</h1> 
         <form onSubmit={handleRegister}>
           <TextField
-            sx={{ bgcolor: 'white', width: '100%', marginTop: '10px', borderRadius: '4px'}}
+            sx={{ 
+              bgcolor: 'white', 
+              width: '100%', 
+              marginTop: '10px', 
+              borderRadius: '4px',
+              '& .MuiInputBase-input': {
+                color: '#000000',
+              }
+            }}
             label="Email"
             type="email"
             value={username}
@@ -191,6 +199,9 @@ const RegisterComponent: React.FC = () => {
                 border: '1px solid #d1d1d1',
                 borderRadius: '4px',
                 padding: '0 10px',
+                '& .MuiInputBase-input': {
+                  color: '#000000',
+                }
               }}
               placeholder="验证码"
               type="text"
@@ -227,7 +238,14 @@ const RegisterComponent: React.FC = () => {
             />
           </div>
           <TextField
-            sx={{ bgcolor: 'white', marginTop: '-5px', borderRadius: '4px'}}
+            sx={{ 
+              bgcolor: 'white', 
+              marginTop: '-5px', 
+              borderRadius: '4px',
+              '& .MuiInputBase-input': {
+                color: '#000000',
+              }
+            }}
             type={showPassword ? 'text' : 'password'}
             label="密码"
             value={password}
@@ -252,7 +270,14 @@ const RegisterComponent: React.FC = () => {
             }}
           />
           <TextField
-            sx={{ bgcolor: 'white', marginTop: '10px', borderRadius: '4px' }}
+            sx={{ 
+              bgcolor: 'white', 
+              marginTop: '10px', 
+              borderRadius: '4px',
+              '& .MuiInputBase-input': {
+                color: '#000000',
+              }
+            }}
             type={showPassword ? 'text' : 'password'}
             label="确认密码"
             value={confirmPassword}

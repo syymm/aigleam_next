@@ -29,8 +29,24 @@ body {
 }
 
 /* 针对自动填充的输入框样式 */
-input:-webkit-autofill {
-  -webkit-box-shadow: 0 0 0 30px white inset !important; /* 设置背景颜色 */
-  box-shadow: 0 0 0 30px white inset !important; /* 设置背景颜色 */
-  -webkit-text-fill-color: black; /* 设置文本颜色 */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 30px white inset !important;
+  box-shadow: 0 0 0 30px white inset !important;
+  -webkit-text-fill-color: #000000 !important;
+  caret-color: #000000 !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+/* 为 Material-UI 输入框添加特殊样式 */
+.MuiInputBase-input:-webkit-autofill,
+.MuiInputBase-input:-webkit-autofill:hover,
+.MuiInputBase-input:-webkit-autofill:focus,
+.MuiInputBase-input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 30px white inset !important;
+  box-shadow: 0 0 0 30px white inset !important;
+  -webkit-text-fill-color: #000000 !important;
+  caret-color: #000000 !important;
 }
