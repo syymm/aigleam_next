@@ -128,6 +128,13 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
           <SendIcon />
         </IconButton>
       </Box>
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleFileSelect}
+        style={{ display: 'none' }}
+        accept="image/*,.pdf,.doc,.docx,.txt"  // 可以根据需要调整接受的文件类型
+      />
     </Box>
   );
 };
