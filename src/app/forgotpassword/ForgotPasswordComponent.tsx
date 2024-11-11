@@ -21,6 +21,8 @@ import VisibilityOff from '@mui/icons-material/VisibilityOff';
 import Link from 'next/link';
 import InputBase from '@mui/material/InputBase';
 import { StepIconProps } from '@mui/material/StepIcon';
+import Snackbar from '@mui/material/Snackbar';
+import Alert from '@mui/material/Alert';
 import './ForgotPasswordComponent.css';
 
 const QontoConnector = styled(StepConnector)(({ theme }) => ({
@@ -100,9 +102,69 @@ const ForgotPasswordComponent: React.FC = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [verificationCode, setVerificationCode] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [userId, setUserId] = useState<number | null>(null);
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: '',
+    severity: 'error' as 'error' | 'success'
+  });
 
-  const handleNext = () => {
-    if (activeStep < steps.length - 1) {
+  const handleCloseSnackbar = () => {
+    setSnackbar({ ...snackbar, open: false });
+  };
+
+  const validateEmail = (email: string) => {
+    const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return re.test(email);
+  };
+
+  const handleNext = async () => {
+    if (activeStep === 0) {
+      // 邮箱验证步骤
+      if (!email.trim()) {
+        setSnackbar({
+          open: true,
+          message: '邮箱不能为空',
+          severity: 'error'
+        });
+        return;
+      }
+
+      if (!validateEmail(email)) {
+        setSnackbar({
+          open: true,
+          message: '邮箱格式错误',
+          severity: 'error'
+        });
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/forgotpassword', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ email }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error);
+        }
+
+        setUserId(data.userId);
+        setActiveStep((prevActiveStep) => prevActiveStep + 1);
+        
+      } catch (error) {
+        setSnackbar({
+          open: true,
+          message: error instanceof Error ? error.message : '验证失败',
+          severity: 'error'
+        });
+      }
+    } else {
       setActiveStep((prevActiveStep) => prevActiveStep + 1);
     }
   };
@@ -292,9 +354,24 @@ const ForgotPasswordComponent: React.FC = () => {
             </Stack>
           </Box>
         </div>
+
+        <Snackbar 
+          open={snackbar.open}
+          autoHideDuration={3000}
+          onClose={handleCloseSnackbar}
+          anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+        >
+          <Alert 
+            onClose={handleCloseSnackbar} 
+            severity={snackbar.severity}
+            sx={{ width: '100%' }}
+          >
+            {snackbar.message}
+          </Alert>
+        </Snackbar>
       </div>
     </ThemeProvider>
   );
-}
+};
 
 export default ForgotPasswordComponent;
