@@ -338,7 +338,7 @@ const ForgotPasswordComponent: React.FC = () => {
         );
       case 1:
         return (
-          <Box component="form" autoComplete="off" sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
+          <Box component="form" sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
             <TextField
               sx={{ bgcolor: 'white', marginTop: '0px', height: '40px', width: '60%' }}
               label="新密码"
