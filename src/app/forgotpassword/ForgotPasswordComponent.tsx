@@ -103,6 +103,7 @@ const ForgotPasswordComponent: React.FC = () => {
   const [verificationCode, setVerificationCode] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [userId, setUserId] = useState<number | null>(null);
+  const [isCodeSending, setIsCodeSending] = useState(false);
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: '',
@@ -116,6 +117,50 @@ const ForgotPasswordComponent: React.FC = () => {
   const validateEmail = (email: string) => {
     const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return re.test(email);
+  };
+
+  const handleSendVerificationCode = async () => {
+    // 邮箱格式验证
+    if (!email || !validateEmail(email)) {
+      setSnackbar({
+        open: true,
+        message: '请输入有效的邮箱地址',
+        severity: 'error'
+      });
+      return;
+    }
+
+    setIsCodeSending(true);
+    try {
+      const response = await fetch('/api/send-verification-code', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ username: email }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message);
+      }
+
+      setSnackbar({
+        open: true,
+        message: '验证码已发送，请检查您的邮箱',
+        severity: 'success'
+      });
+    } catch (error) {
+      console.error('发送验证码时出错:', error);
+      setSnackbar({
+        open: true,
+        message: error instanceof Error ? error.message : '发送验证码失败，请稍后再试',
+        severity: 'error'
+      });
+    } finally {
+      setIsCodeSending(false);
+    }
   };
 
   const handleNext = async () => {
@@ -145,7 +190,10 @@ const ForgotPasswordComponent: React.FC = () => {
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ email }),
+          body: JSON.stringify({
+            step: 1,
+            email
+          }),
         });
 
         const data = await response.json();
@@ -156,7 +204,7 @@ const ForgotPasswordComponent: React.FC = () => {
 
         setUserId(data.userId);
         setActiveStep((prevActiveStep) => prevActiveStep + 1);
-        
+
       } catch (error) {
         setSnackbar({
           open: true,
@@ -164,8 +212,79 @@ const ForgotPasswordComponent: React.FC = () => {
           severity: 'error'
         });
       }
-    } else {
-      setActiveStep((prevActiveStep) => prevActiveStep + 1);
+    } else if (activeStep === 1) {
+      // 步骤2: 密码重置
+      if (!password.trim() || !confirmPassword.trim()) {
+        setSnackbar({
+          open: true,
+          message: '请输入密码',
+          severity: 'error'
+        });
+        return;
+      }
+
+      if (password.length < 6) {
+        setSnackbar({
+          open: true,
+          message: '密码长度不能少于6位',
+          severity: 'error'
+        });
+        return;
+      }
+
+      if (password !== confirmPassword) {
+        setSnackbar({
+          open: true,
+          message: '两次输入的密码不一致',
+          severity: 'error'
+        });
+        return;
+      }
+
+      if (!verificationCode.trim()) {
+        setSnackbar({
+          open: true,
+          message: '请输入验证码',
+          severity: 'error'
+        });
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/forgotpassword', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            step: 2,
+            email,
+            password,
+            confirmPassword,
+            verificationCode,
+            userId
+          }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error);
+        }
+
+        setSnackbar({
+          open: true,
+          message: '密码重置成功',
+          severity: 'success'
+        });
+        setActiveStep((prevActiveStep) => prevActiveStep + 1);
+      } catch (error) {
+        setSnackbar({
+          open: true,
+          message: error instanceof Error ? error.message : '密码重置失败',
+          severity: 'error'
+        });
+      }
     }
   };
 
@@ -194,7 +313,7 @@ const ForgotPasswordComponent: React.FC = () => {
         );
       case 1:
         return (
-          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
+          <Box component="form" autoComplete="off" sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
             <TextField
               sx={{ bgcolor: 'white', marginTop: '0px', height: '40px', width: '60%' }}
               label="新密码"
@@ -205,6 +324,7 @@ const ForgotPasswordComponent: React.FC = () => {
               variant="outlined"
               size="small"
               margin="normal"
+              autoComplete="new-password"
               InputProps={{
                 endAdornment: (
                   <InputAdornment position="end">
@@ -230,6 +350,7 @@ const ForgotPasswordComponent: React.FC = () => {
               variant="outlined"
               size="small"
               margin="normal"
+              autoComplete="new-password"
               InputProps={{
                 endAdornment: (
                   <InputAdornment position="end">
@@ -255,6 +376,7 @@ const ForgotPasswordComponent: React.FC = () => {
               variant="outlined"
               size="small"
               margin="normal"
+              disabled
             />
             <InputBase
               sx={{
@@ -276,6 +398,8 @@ const ForgotPasswordComponent: React.FC = () => {
                     id="customButton"
                     variant="text"
                     size='small'
+                    onClick={handleSendVerificationCode}
+                    disabled={isCodeSending}
                     endIcon={<SendIcon sx={{ color: '#6200ea', transform: 'translateY(-2px)' }} />}
                     sx={{
                       height: '18px',
@@ -290,7 +414,7 @@ const ForgotPasswordComponent: React.FC = () => {
                       }
                     }}
                   >
-                    send
+                    {isCodeSending ? '发送中...' : '发送'}
                   </Button></>
               }
             />
@@ -299,7 +423,7 @@ const ForgotPasswordComponent: React.FC = () => {
       case 2:
         return (
           <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
-            <Typography sx={{ mt: 2, mb: 1 }}>重置成功内容</Typography>
+            <Typography sx={{ mt: 2, mb: 1 }}>密码重置成功！</Typography>
             <Button
               component={Link}
               href="/login"
@@ -355,16 +479,17 @@ const ForgotPasswordComponent: React.FC = () => {
           </Box>
         </div>
 
-        <Snackbar 
+        <Snackbar
           open={snackbar.open}
           autoHideDuration={3000}
           onClose={handleCloseSnackbar}
           anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
         >
-          <Alert 
-            onClose={handleCloseSnackbar} 
+          <Alert
+            onClose={handleCloseSnackbar}
             severity={snackbar.severity}
             sx={{ width: '100%' }}
+            variant="filled"
           >
             {snackbar.message}
           </Alert>
