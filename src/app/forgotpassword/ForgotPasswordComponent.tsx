@@ -119,7 +119,55 @@ const ForgotPasswordComponent: React.FC = () => {
     return re.test(email);
   };
 
+  // 添加密码字段验证函数
+  const validatePasswordFields = () => {
+    if (!password.trim()) {
+      setSnackbar({
+        open: true,
+        message: '请输入新密码',
+        severity: 'error'
+      });
+      return false;
+    }
+
+    if (password.length < 6) {
+      setSnackbar({
+        open: true,
+        message: '密码长度不能少于6位',
+        severity: 'error'
+      });
+      return false;
+    }
+
+    if (!confirmPassword.trim()) {
+      setSnackbar({
+        open: true,
+        message: '请输入确认密码',
+        severity: 'error'
+      });
+      return false;
+    }
+
+    if (password !== confirmPassword) {
+      setSnackbar({
+        open: true,
+        message: '两次输入的密码不一致',
+        severity: 'error'
+      });
+      return false;
+    }
+
+    return true;
+  };
+
   const handleSendVerificationCode = async () => {
+    // 如果在第二步，先验证密码相关字段
+    if (activeStep === 1) {
+      if (!validatePasswordFields()) {
+        return;
+      }
+    }
+
     // 邮箱格式验证
     if (!email || !validateEmail(email)) {
       setSnackbar({
@@ -214,30 +262,7 @@ const ForgotPasswordComponent: React.FC = () => {
       }
     } else if (activeStep === 1) {
       // 步骤2: 密码重置
-      if (!password.trim() || !confirmPassword.trim()) {
-        setSnackbar({
-          open: true,
-          message: '请输入密码',
-          severity: 'error'
-        });
-        return;
-      }
-
-      if (password.length < 6) {
-        setSnackbar({
-          open: true,
-          message: '密码长度不能少于6位',
-          severity: 'error'
-        });
-        return;
-      }
-
-      if (password !== confirmPassword) {
-        setSnackbar({
-          open: true,
-          message: '两次输入的密码不一致',
-          severity: 'error'
-        });
+      if (!validatePasswordFields()) {
         return;
       }
 
@@ -400,14 +425,19 @@ const ForgotPasswordComponent: React.FC = () => {
                     size='small'
                     onClick={handleSendVerificationCode}
                     disabled={isCodeSending}
-                    endIcon={<SendIcon sx={{ color: '#6200ea', transform: 'translateY(-2px)' }} />}
+                    endIcon={<SendIcon sx={{ color: '#6200ea' }} />}
                     sx={{
-                      height: '18px',
+                      height: '100%',
                       ml: 1,
-                      transform: 'translateY(5px)',
                       color: '#6200ea',
                       backgroundColor: 'transparent',
                       boxShadow: 'none',
+                      display: 'flex',
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      whiteSpace: 'nowrap',
+                      minWidth: 'auto',
+                      padding: '0 8px',
                       '&:hover': {
                         backgroundColor: 'transparent',
                         boxShadow: 'none'
@@ -415,7 +445,8 @@ const ForgotPasswordComponent: React.FC = () => {
                     }}
                   >
                     {isCodeSending ? '发送中...' : '发送'}
-                  </Button></>
+                  </Button>
+                </>
               }
             />
           </Box>
