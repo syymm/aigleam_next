@@ -25,6 +25,9 @@ const MessagePaper = styled(Paper)(({ theme }) => ({
   backgroundColor: theme.palette.mode === 'dark' 
     ? theme.palette.grey[900] 
     : theme.palette.grey[100],
+  wordWrap: 'break-word',
+  overflowWrap: 'break-word',
+  whiteSpace: 'pre-wrap',
 }));
 
 const ChatArea: React.FC<ChatAreaProps> = ({ messages, onBestResponse, onErrorResponse, onQuoteReply }) => {
@@ -97,7 +100,16 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, onBestResponse, onErrorRe
             }}
           >
             <MessagePaper elevation={1} onMouseUp={handleTextSelection}>
-              <Typography color="text.primary">{message.content}</Typography>
+              <Typography 
+                color="text.primary"
+                sx={{
+                  wordBreak: 'break-word',
+                  overflowWrap: 'break-word',
+                  maxWidth: '100%',
+                }}
+              >
+                {message.content}
+              </Typography>
               {!message.isUser && (
                 <Box sx={{ position: 'absolute', right: 8, bottom: 8, display: 'flex' }}>
                   <IconButton size="small" onClick={() => handleReadAloud(message.content)}>

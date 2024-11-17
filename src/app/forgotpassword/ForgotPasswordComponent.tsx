@@ -422,7 +422,7 @@ const ForgotPasswordComponent: React.FC = () => {
                   <Button
                     id="customButton"
                     variant="text"
-                    size='small'
+                    size='medium'
                     onClick={handleSendVerificationCode}
                     disabled={isCodeSending}
                     endIcon={<SendIcon sx={{ color: '#6200ea' }} />}
