@@ -17,6 +17,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ message: '邮箱是必需的' }, { status: 400 });
   }
 
+  // 检查速率限制
+  const rateLimit = verificationCodeManager.canRequestCode(username);
+  if (!rateLimit.allowed) {
+    console.log(`Rate limit exceeded for ${username}`);
+    return NextResponse.json({ 
+      message: rateLimit.message || '请求过于频繁，请稍后再试',
+      waitTime: rateLimit.waitTime 
+    }, { status: 429 });
+  }
+
   try {
     const verificationCode = verificationCodeManager.generateCode();
     console.log(`Generated verification code: ${verificationCode}`);

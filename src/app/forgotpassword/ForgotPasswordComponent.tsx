@@ -167,7 +167,7 @@ const ForgotPasswordComponent: React.FC = () => {
         return;
       }
     }
-
+  
     // 邮箱格式验证
     if (!email || !validateEmail(email)) {
       setSnackbar({
@@ -177,7 +177,7 @@ const ForgotPasswordComponent: React.FC = () => {
       });
       return;
     }
-
+  
     setIsCodeSending(true);
     try {
       const response = await fetch('/api/send-verification-code', {
@@ -187,13 +187,30 @@ const ForgotPasswordComponent: React.FC = () => {
         },
         body: JSON.stringify({ username: email }),
       });
-
+  
       const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message);
+  
+      if (response.status === 429) {
+        // 处理速率限制
+        const waitTimeInMinutes = Math.ceil(data.waitTime / (60 * 1000));
+        const waitTimeInSeconds = Math.ceil(data.waitTime / 1000);
+        
+        const message = waitTimeInMinutes > 1 
+          ? `请等待 ${waitTimeInMinutes} 分钟后再尝试`
+          : `请等待 ${waitTimeInSeconds} 秒后再尝试`;
+        
+        setSnackbar({
+          open: true,
+          message: data.message || message,
+          severity: 'error'
+        });
+        return;
       }
-
+  
+      if (!response.ok) {
+        throw new Error(data.message || '发送验证码失败');
+      }
+  
       setSnackbar({
         open: true,
         message: '验证码已发送，请检查您的邮箱',

@@ -73,11 +73,15 @@ export async function POST(request: Request) {
         );
       }
 
-      // 验证密码长度
-      if (password.length < 6) {
+      // 在验证验证码之前，先检查是否可以使用验证码（防止暴力破解）
+      const canUseCode = verificationCodeManager.canRequestCode(email);
+      if (!canUseCode.allowed) {
         return NextResponse.json(
-          { error: '密码长度不能少于6位' },
-          { status: 400 }
+          { 
+            error: canUseCode.message || '请求过于频繁，请稍后再试',
+            waitTime: canUseCode.waitTime 
+          },
+          { status: 429 }
         );
       }
 
