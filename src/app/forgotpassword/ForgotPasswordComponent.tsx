@@ -130,15 +130,6 @@ const ForgotPasswordComponent: React.FC = () => {
       return false;
     }
 
-    if (password.length < 6) {
-      setSnackbar({
-        open: true,
-        message: '密码长度不能少于6位',
-        severity: 'error'
-      });
-      return false;
-    }
-
     if (!confirmPassword.trim()) {
       setSnackbar({
         open: true,
