@@ -43,6 +43,7 @@ const ChatPageComponent: React.FC = () => {
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const [messagesMap, setMessagesMap] = useState<Record<string, Message[]>>({});
   const [selectedModel, setSelectedModel] = useState('gpt-3.5-turbo');
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleDrawerOpen = () => {
     setOpen(true);
@@ -62,48 +63,88 @@ const ChatPageComponent: React.FC = () => {
     setMessagesMap(prevMap => ({...prevMap, [newConversation.id]: []}));
   };
 
-  const handleSendMessage = (content: string) => {
-    if (!currentConversationId) return;
-    const newMessage: Message = {
+  const handleSendMessage = async (content: string) => {
+    if (!currentConversationId || !content.trim()) return;
+    
+    // 添加用户消息
+    const userMessage: Message = {
       id: Date.now().toString(),
       content,
       isUser: true
     };
+    
     setMessagesMap(prevMap => ({
       ...prevMap,
-      [currentConversationId]: [...(prevMap[currentConversationId] || []), newMessage]
+      [currentConversationId]: [...(prevMap[currentConversationId] || []), userMessage]
     }));
-    // 这里应该添加发送消息到后端的逻辑
+
+    setIsLoading(true);
+
+    try {
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ message: content }),
+      });
+
+      if (!response.ok) {
+        throw new Error('发送消息失败');
+      }
+
+      const data = await response.json();
+
+      // 添加AI响应
+      const aiMessage: Message = {
+        id: data.messageId,
+        content: data.reply,
+        isUser: false,
+      };
+
+      setMessagesMap(prevMap => ({
+        ...prevMap,
+        [currentConversationId]: [...(prevMap[currentConversationId] || []), aiMessage]
+      }));
+
+    } catch (error) {
+      console.error('Error:', error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleBestResponse = (messageId: string) => {
     // 实现标记最佳回复的逻辑
+    console.log('Best response:', messageId);
   };
 
   const handleErrorResponse = (messageId: string) => {
     // 实现标记错误回复的逻辑
+    console.log('Error response:', messageId);
   };
 
   const handleQuoteReply = (content: string) => {
     // 实现引用回复的逻辑
+    console.log('Quote reply:', content);
   };
 
   const handleUpgrade = () => {
     // 实现升级套餐的逻辑
+    console.log('Upgrade clicked');
   };
 
   const handleLogout = () => {
     // 实现注销的逻辑
+    console.log('Logout clicked');
   };
 
   const handleSwitchModel = () => {
-    // 实现切换模型的逻辑
     setSelectedModel(selectedModel === 'gpt-3.5-turbo' ? 'gpt-4' : 'gpt-3.5-turbo');
   };
 
   const handleSwitchConversation = (conversationId: string) => {
     setCurrentConversationId(conversationId);
-    // 如果这个对话还没有消息记录,初始化为空数组
     if (!messagesMap[conversationId]) {
       setMessagesMap(prevMap => ({...prevMap, [conversationId]: []}));
     }
@@ -159,11 +200,12 @@ const ChatPageComponent: React.FC = () => {
           {currentConversationId ? (
             <>
               <ChatArea
-                messages={currentConversationId ? messagesMap[currentConversationId] || [] : []}
+                messages={messagesMap[currentConversationId] || []}
                 onBestResponse={handleBestResponse}
                 onErrorResponse={handleErrorResponse}
                 onQuoteReply={handleQuoteReply}
                 onSwitchModel={handleSwitchModel}
+                isLoading={isLoading}
               />
               <InputArea onSendMessage={handleSendMessage} />
             </>

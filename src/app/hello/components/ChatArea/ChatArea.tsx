@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Box, Paper, Typography, IconButton, Snackbar, Popover } from '@mui/material';
+import { Box, Paper, Typography, IconButton, Snackbar, Popover, CircularProgress } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import { styled } from '@mui/material/styles';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
@@ -7,14 +7,20 @@ import ThumbUpIcon from '@mui/icons-material/ThumbUp';
 import ThumbDownIcon from '@mui/icons-material/ThumbDown';
 import FormatQuoteIcon from '@mui/icons-material/FormatQuote';
 import VolumeUpIcon from '@mui/icons-material/VolumeUp';
-import AutorenewIcon from '@mui/icons-material/Autorenew';
+
+interface Message {
+  id: string;
+  content: string;
+  isUser: boolean;
+}
 
 interface ChatAreaProps {
-  messages: Array<{ id: string; content: string; isUser: boolean }>;
+  messages: Message[];
   onBestResponse: (messageId: string) => void;
   onErrorResponse: (messageId: string) => void;
   onQuoteReply: (content: string) => void;
   onSwitchModel: () => void;
+  isLoading?: boolean;
 }
 
 const MessagePaper = styled(Paper)(({ theme }) => ({
@@ -30,7 +36,14 @@ const MessagePaper = styled(Paper)(({ theme }) => ({
   whiteSpace: 'pre-wrap',
 }));
 
-const ChatArea: React.FC<ChatAreaProps> = ({ messages, onBestResponse, onErrorResponse, onQuoteReply }) => {
+const ChatArea: React.FC<ChatAreaProps> = ({ 
+  messages,
+  onBestResponse,
+  onErrorResponse,
+  onQuoteReply,
+  onSwitchModel,
+  isLoading = false
+}) => {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [selectedText, setSelectedText] = useState('');
   const [snackbarOpen, setSnackbarOpen] = useState(false);
@@ -56,14 +69,8 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, onBestResponse, onErrorRe
   };
 
   const handleReadAloud = (content: string) => {
-    // 实现文本朗读功能
     const speech = new SpeechSynthesisUtterance(content);
     window.speechSynthesis.speak(speech);
-  };
-
-  const handleSwitchModel = () => {
-    // 实现切换模型的逻辑
-    // 这可能需要与父组件通信来切换模型
   };
 
   return (
@@ -124,14 +131,16 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, onBestResponse, onErrorRe
                   <IconButton size="small" onClick={() => onErrorResponse(message.id)}>
                     <ThumbDownIcon fontSize="small" />
                   </IconButton>
-                  <IconButton size="small" onClick={() => handleSwitchModel()}>
-                    <AutorenewIcon fontSize="small" />
-                  </IconButton>
                 </Box>
               )}
             </MessagePaper>
           </Box>
         ))}
+        {isLoading && (
+          <Box sx={{ display: 'flex', justifyContent: 'center', my: 2 }}>
+            <CircularProgress size={24} />
+          </Box>
+        )}
       </Box>
       <Popover
         open={Boolean(anchorEl)}
