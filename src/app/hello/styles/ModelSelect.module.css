@@ -1,0 +1,164 @@
+.modelSelectButton {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    min-width: 200px;
+    border: none;
+    background-color: transparent;
+  }
+  
+  /* 深色主题样式 */
+  :global(.dark-theme) .modelSelectButton {
+    color: white;
+  }
+  
+  :global(.dark-theme) .modelSelectButton:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+  }
+  
+  /* 浅色主题样式 */
+  .modelSelectButton {
+    color: #000000;
+  }
+  
+  .modelSelectButton:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+  }
+  
+  .modelSelectDropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    margin-top: 4px;
+    border-radius: 8px;
+    width: 300px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(0, 0, 0, 0.1);
+    z-index: 1000;
+    overflow: hidden;
+  }
+  
+  /* 深色主题下拉菜单 */
+  :global(.dark-theme) .modelSelectDropdown {
+    background-color: #202123;
+    color: white;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.1);
+  }
+  
+  /* 浅色主题下拉菜单 */
+  .modelSelectDropdown {
+    background-color: white;
+    color: black;
+  }
+  
+  .modelOption {
+    padding: 10px 14px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    position: relative;
+  }
+  
+  /* 深色主题悬停效果 */
+  :global(.dark-theme) .modelOption:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+  }
+  
+  /* 浅色主题悬停效果 */
+  .modelOption:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+  }
+  
+  .modelTitle {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 14px;
+    font-weight: 400;
+    min-height: 32px;
+  }
+  
+  /* 深色主题文字颜色 */
+  :global(.dark-theme) .modelTitle {
+    color: white;
+  }
+  
+  /* 浅色主题文字颜色 */
+  .modelTitle {
+    color: black;
+  }
+  
+  .modelDescription {
+    font-size: 12px;
+    margin-left: 0;
+    opacity: 0.6;
+  }
+  
+  /* 深色主题描述文字颜色 */
+  :global(.dark-theme) .modelDescription {
+    color: #8e8ea0;
+  }
+  
+  /* 浅色主题描述文字颜色 */
+  .modelDescription {
+    color: #6e6e6e;
+  }
+  
+  .chevronIcon {
+    transition: transform 0.2s;
+  }
+  
+  .chevronIcon.open {
+    transform: rotate(180deg);
+  }
+  
+  .titleRight {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    position: absolute;
+    right: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+  }
+  
+  .upgradeButton {
+    padding: 4px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    cursor: pointer;
+    background-color: #444654;
+    color: white;
+    border: none;
+    transition: all 0.2s ease;
+    height: 24px;
+    line-height: 16px;
+  }
+  
+  /* 深色主题升级按钮 */
+  :global(.dark-theme) .upgradeButton {
+    background-color: #444654;
+  }
+  
+  /* 深色主题升级按钮悬停效果 */
+  :global(.dark-theme) .upgradeButton:hover {
+    background-color: #40414f;
+    transform: scale(1.05);
+  }
+  
+  /* 浅色主题升级按钮悬停效果 */
+  .upgradeButton:hover {
+    background-color: #2d2d2d;
+    transform: scale(1.02);
+    color: white;
+  }
+  
+  .titleLeft {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }

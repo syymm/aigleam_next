@@ -68,7 +68,7 @@ const TopNav: React.FC<TopNavProps> = ({
           >
             <MenuIcon />
           </IconButton>
-          <ModelSelect selectedModel={selectedModel} setSelectedModel={setSelectedModel} />
+          <ModelSelect selectedModel={selectedModel} setSelectedModel={setSelectedModel} onUpgrade={onUpgrade} />
         </div>
         <UserAvatar
           onThemeToggle={onThemeToggle}

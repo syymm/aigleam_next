@@ -5,11 +5,15 @@ import LogoutButton from '../Auth/LogoutButton';
 
 interface UserAvatarProps {
   onThemeToggle: () => void;
+  onUpgrade: () => void;
+  onLogout: () => void;
   isDarkMode: boolean;
 }
 
 const UserAvatar: React.FC<UserAvatarProps> = ({ 
   onThemeToggle, 
+  onUpgrade, 
+  onLogout, 
   isDarkMode 
 }) => {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
