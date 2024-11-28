@@ -1,17 +1,17 @@
 import React, { useState } from 'react';
 import { Avatar, Menu, MenuItem, Divider, IconButton, useTheme } from '@mui/material';
-import { Brightness4, Brightness7, AccountCircle, ExitToApp } from '@mui/icons-material';
-import UpgradeButton from '../Account/UpgradeButton';
+import { Brightness4, Brightness7 } from '@mui/icons-material';
 import LogoutButton from '../Auth/LogoutButton';
 
 interface UserAvatarProps {
   onThemeToggle: () => void;
-  onUpgrade: () => void;
-  onLogout: () => void;
   isDarkMode: boolean;
 }
 
-const UserAvatar: React.FC<UserAvatarProps> = ({ onThemeToggle, onUpgrade, onLogout, isDarkMode }) => {
+const UserAvatar: React.FC<UserAvatarProps> = ({ 
+  onThemeToggle, 
+  isDarkMode 
+}) => {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const theme = useTheme();
 
@@ -44,9 +44,7 @@ const UserAvatar: React.FC<UserAvatarProps> = ({ onThemeToggle, onUpgrade, onLog
           <span style={{ marginLeft: '12px' }}>{isDarkMode ? '浅色主题' : '深色主题'}</span>
         </MenuItem>
         <Divider />
-        <UpgradeButton onUpgrade={() => { onUpgrade(); handleClose(); }} />
-        <Divider />
-        <LogoutButton onLogout={() => { onLogout(); handleClose(); }} />
+        <LogoutButton onClose={handleClose} />
       </Menu>
     </div>
   );
