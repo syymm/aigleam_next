@@ -4,31 +4,22 @@ import styles from '../../styles/ModelSelect.module.css';
 interface ModelSelectProps {
   selectedModel: string;
   setSelectedModel: (model: string) => void;
-  onUpgrade: () => void;
 }
 
-const ModelSelect: React.FC<ModelSelectProps> = ({ selectedModel, setSelectedModel, onUpgrade }) => {
+const ModelSelect: React.FC<ModelSelectProps> = ({ selectedModel, setSelectedModel }) => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const models = [
     { 
       value: 'gpt-3.5-turbo', 
-      label: 'ChatGPT', 
-      description: '非常适合用于日常任务',
-      requiresUpgrade: false 
+      label: 'GPT-3.5-turbo', 
+      description: '非常适合用于日常任务'
     },
     { 
-      value: 'gpt-4', 
-      label: 'ChatGPT Plus', 
-      description: '我们最智能的模型可以更多内容',
-      requiresUpgrade: true 
-    },
-    { 
-      value: 'claude-3.5', 
-      label: 'Claude 3.5 Sonnet', 
-      description: '更强大的AI助手，支持更多功能',
-      requiresUpgrade: true 
+      value: 'gpt4o', 
+      label: 'GPT-4o', 
+      description: '更强大的AI助手，支持更多功能'
     }
   ];
 
@@ -48,17 +39,12 @@ const ModelSelect: React.FC<ModelSelectProps> = ({ selectedModel, setSelectedMod
   }, [isOpen]);
 
   const handleModelSelect = (model: typeof models[0]) => {
-    if (model.requiresUpgrade) {
-      onUpgrade();
-      setIsOpen(false);
-    } else {
-      setSelectedModel(model.value);
-      setIsOpen(false);
-    }
+    setSelectedModel(model.value);
+    setIsOpen(false);
   };
 
   return (
-    <div className="relative" ref={dropdownRef}>
+    <div className={styles.modelSelectWrapper} ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
         className={styles.modelSelectButton}
@@ -88,18 +74,6 @@ const ModelSelect: React.FC<ModelSelectProps> = ({ selectedModel, setSelectedMod
                   <span>{model.label}</span>
                 </div>
                 <div className={styles.titleRight}>
-                  {model.requiresUpgrade && (
-                    <button 
-                      className={styles.upgradeButton}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onUpgrade();
-                        setIsOpen(false);
-                      }}
-                    >
-                      升级
-                    </button>
-                  )}
                   {selectedModel === model.value && (
                     <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
                       <path d="M12.207 4.793a1 1 0 010 1.414l-5 5a1 1 0 01-1.414 0l-2-2a1 1 0 011.414-1.414L6.5 9.086l4.293-4.293a1 1 0 011.414 0z" />

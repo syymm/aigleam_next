@@ -87,7 +87,17 @@ const Sidebar: React.FC<SidebarProps> = ({
     >
       <DrawerHeader>
         <SidebarHeader onNewConversation={handleNewChat} />
-        <IconButton onClick={handleDrawerClose}>
+        <IconButton 
+          onClick={handleDrawerClose}
+          sx={{
+            padding: '20px',
+            width: '40px',    // 设置固定宽度
+            height: '40px',   // 设置固定高度 
+            '& .MuiSvgIcon-root': {
+              fontSize: '2rem',
+            }
+          }}
+        >
           {theme.direction === 'ltr' ? <ChevronLeftIcon /> : <ChevronRightIcon />}
         </IconButton>
       </DrawerHeader>

@@ -64,11 +64,19 @@ const TopNav: React.FC<TopNavProps> = ({
             aria-label="open drawer"
             onClick={handleDrawerOpen}
             edge="start"
-            sx={{ mr: 2, ...(open && { display: 'none' }) }}
+            sx={{ 
+              ...(open && { display: 'none' }),
+              padding: '20px',
+              width: '40px',    // 设置固定宽度
+              height: '40px',   // 设置固定高度 
+              '& .MuiSvgIcon-root': {
+                fontSize: '1.8rem',
+              }
+            }}
           >
             <MenuIcon />
           </IconButton>
-          <ModelSelect selectedModel={selectedModel} setSelectedModel={setSelectedModel} onUpgrade={onUpgrade} />
+          <ModelSelect selectedModel={selectedModel} setSelectedModel={setSelectedModel}/>
         </div>
         <UserAvatar
           onThemeToggle={onThemeToggle}
