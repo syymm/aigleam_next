@@ -66,7 +66,6 @@ const ChatPageComponent: React.FC = () => {
   const handleSendMessage = async (content: string) => {
     if (!currentConversationId || !content.trim()) return;
     
-    // 添加用户消息
     const userMessage: Message = {
       id: Date.now().toString(),
       content,
@@ -77,36 +76,38 @@ const ChatPageComponent: React.FC = () => {
       ...prevMap,
       [currentConversationId]: [...(prevMap[currentConversationId] || []), userMessage]
     }));
-
+  
     setIsLoading(true);
-
+  
     try {
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ message: content }),
+        body: JSON.stringify({ 
+          message: content,
+          model: selectedModel
+        }),
       });
-
+  
       if (!response.ok) {
         throw new Error('发送消息失败');
       }
-
+  
       const data = await response.json();
-
-      // 添加AI响应
+  
       const aiMessage: Message = {
         id: data.messageId,
         content: data.reply,
         isUser: false,
       };
-
+  
       setMessagesMap(prevMap => ({
         ...prevMap,
         [currentConversationId]: [...(prevMap[currentConversationId] || []), aiMessage]
       }));
-
+  
     } catch (error) {
       console.error('Error:', error);
     } finally {
@@ -115,32 +116,23 @@ const ChatPageComponent: React.FC = () => {
   };
 
   const handleBestResponse = (messageId: string) => {
-    // 实现标记最佳回复的逻辑
     console.log('Best response:', messageId);
   };
 
   const handleErrorResponse = (messageId: string) => {
-    // 实现标记错误回复的逻辑
     console.log('Error response:', messageId);
   };
 
   const handleQuoteReply = (content: string) => {
-    // 实现引用回复的逻辑
     console.log('Quote reply:', content);
   };
 
   const handleUpgrade = () => {
-    // 实现升级套餐的逻辑
     console.log('Upgrade clicked');
   };
 
   const handleLogout = () => {
-    // 实现注销的逻辑
     console.log('Logout clicked');
-  };
-
-  const handleSwitchModel = () => {
-    setSelectedModel(selectedModel === 'gpt-3.5-turbo' ? 'gpt-4' : 'gpt-3.5-turbo');
   };
 
   const handleSwitchConversation = (conversationId: string) => {
@@ -204,7 +196,6 @@ const ChatPageComponent: React.FC = () => {
                 onBestResponse={handleBestResponse}
                 onErrorResponse={handleErrorResponse}
                 onQuoteReply={handleQuoteReply}
-                onSwitchModel={handleSwitchModel}
                 isLoading={isLoading}
               />
               <InputArea onSendMessage={handleSendMessage} />

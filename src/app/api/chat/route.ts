@@ -1,3 +1,4 @@
+// src/app/api/chat/route.ts
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
 
@@ -7,10 +8,12 @@ const openai = new OpenAI({
 
 export async function POST(request: Request) {
   try {
-    const { message } = await request.json();
+    const { message, model } = await request.json();
+    
+    console.log('后端收到的模型参数:', model);
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo",
+      model, // 直接使用传入的模型
       messages: [{ role: "user", content: message }],
     });
 

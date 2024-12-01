@@ -11,15 +11,30 @@ const ModelSelect: React.FC<ModelSelectProps> = ({ selectedModel, setSelectedMod
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const models = [
-    { 
-      value: 'gpt-3.5-turbo', 
-      label: 'GPT-3.5-turbo', 
+    {
+      value: 'gpt-3.5-turbo',
+      label: 'GPT-3.5-turbo',
       description: '非常适合用于日常任务'
     },
-    { 
-      value: 'gpt4o', 
-      label: 'GPT-4o', 
-      description: '更强大的AI助手，支持更多功能'
+    {
+      value: 'gpt-4o-mini',
+      label: 'GPT-4o-mini',
+      description: '轻量级但强大的AI助手，性能与价格的良好平衡'
+    },
+    {
+      value: 'gpt-4-turbo',
+      label: 'GPT-4-turbo',
+      description: '最新的GPT-4模型，反应更快，知识更新'
+    },
+    {
+      value: 'gpt-4',
+      label: 'GPT-4',
+      description: '强大而可靠的AI模型，适合复杂任务'
+    },
+    {
+      value: 'gpt-4o',
+      label: 'GPT-4o',
+      description: '更强大的AI助手，支持多模态交互'
     }
   ];
 
