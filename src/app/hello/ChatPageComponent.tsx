@@ -131,10 +131,6 @@ const ChatPageComponent: React.FC = () => {
     console.log('Upgrade clicked');
   };
 
-  const handleLogout = () => {
-    console.log('Logout clicked');
-  };
-
   const handleSwitchConversation = (conversationId: string) => {
     setCurrentConversationId(conversationId);
     if (!messagesMap[conversationId]) {
@@ -174,7 +170,6 @@ const ChatPageComponent: React.FC = () => {
         setSelectedModel={setSelectedModel}
         onThemeToggle={toggleTheme}
         onUpgrade={handleUpgrade}
-        onLogout={handleLogout}
         isDarkMode={themeMode === 'dark'}
       />
       <Sidebar 

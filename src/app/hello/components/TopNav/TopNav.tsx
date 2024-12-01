@@ -40,7 +40,6 @@ interface TopNavProps {
   setSelectedModel: (model: string) => void;
   onThemeToggle: () => void;
   onUpgrade: () => void;
-  onLogout: () => void;
   isDarkMode: boolean;
 }
 
@@ -51,10 +50,10 @@ const TopNav: React.FC<TopNavProps> = ({
   setSelectedModel, 
   onThemeToggle,
   onUpgrade,
-  onLogout,
   isDarkMode
 }) => {
   const theme = useTheme();
+  
   return (
     <AppBar position="fixed" open={open} elevation={0} sx={{ backgroundColor: theme.palette.background.default }}>
       <Toolbar sx={{ justifyContent: 'space-between' }}>
@@ -81,7 +80,6 @@ const TopNav: React.FC<TopNavProps> = ({
         <UserAvatar
           onThemeToggle={onThemeToggle}
           onUpgrade={onUpgrade}
-          onLogout={onLogout}
           isDarkMode={isDarkMode}
         />
       </Toolbar>
