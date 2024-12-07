@@ -63,51 +63,58 @@ const ChatPageComponent: React.FC = () => {
     setMessagesMap(prevMap => ({...prevMap, [newConversation.id]: []}));
   };
 
-  const handleSendMessage = async (content: string) => {
+  const handleSendMessage = async (content: string, file?: File) => {
     if (!currentConversationId || !content.trim()) return;
     
     const userMessage: Message = {
       id: Date.now().toString(),
       content,
-      isUser: true
+      isUser: true,
+      ...(file && {
+        fileInfo: {
+          name: file.name,
+          type: file.type,
+        }
+      })
     };
     
     setMessagesMap(prevMap => ({
       ...prevMap,
       [currentConversationId]: [...(prevMap[currentConversationId] || []), userMessage]
     }));
-  
+
     setIsLoading(true);
-  
+
     try {
+      const formData = new FormData();
+      formData.append('message', content);
+      formData.append('model', selectedModel);
+      if (file) {
+        formData.append('file', file);
+      }
+
       const response = await fetch('/api/chat', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ 
-          message: content,
-          model: selectedModel
-        }),
+        body: formData,
       });
-  
+
       if (!response.ok) {
         throw new Error('发送消息失败');
       }
-  
+
       const data = await response.json();
-  
+
       const aiMessage: Message = {
         id: data.messageId,
         content: data.reply,
-        isUser: false,
+        isUser: false
       };
-  
+
       setMessagesMap(prevMap => ({
         ...prevMap,
         [currentConversationId]: [...(prevMap[currentConversationId] || []), aiMessage]
       }));
-  
+
     } catch (error) {
       console.error('Error:', error);
     } finally {

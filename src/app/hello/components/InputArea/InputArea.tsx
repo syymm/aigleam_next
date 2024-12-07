@@ -2,15 +2,12 @@ import React, { useState, KeyboardEvent, useRef, ChangeEvent } from 'react';
 import { TextField, IconButton, Box } from '@mui/material';
 import SendIcon from '@mui/icons-material/Send';
 import AttachFileIcon from '@mui/icons-material/AttachFile';
-import { useTheme } from '../../../contexts/ThemeContext'; // 更新导入路径
+import { useTheme } from '../../../contexts/ThemeContext';
 import styles from '../../styles/ChatPage.module.css';
-
-interface InputAreaProps {
-  onSendMessage: (content: string, file?: File) => void;
-}
+import { InputAreaProps } from '../../types';
 
 const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
-  const { theme, themeMode } = useTheme(); // 使用自定义的 useTheme
+  const { theme, themeMode } = useTheme();
   const [inputValue, setInputValue] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -20,6 +17,9 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
       onSendMessage(inputValue, selectedFile || undefined);
       setInputValue('');
       setSelectedFile(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''; // 清空文件输入
+      }
     }
   };
 
@@ -32,7 +32,13 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
 
   const handleFileSelect = (event: ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files.length > 0) {
-      setSelectedFile(event.target.files[0]);
+      const file = event.target.files[0];
+      // 可以在这里添加文件类型和大小的验证
+      if (file.size > 10 * 1024 * 1024) { // 10MB 限制
+        alert('文件大小不能超过10MB');
+        return;
+      }
+      setSelectedFile(file);
     }
   };
 
@@ -48,6 +54,7 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
         backgroundColor: theme.palette.background.default,
         display: 'flex',
         justifyContent: 'center',
+        position: 'relative',
       }}
     >
       <Box sx={{ 
@@ -70,6 +77,33 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
         >
           <AttachFileIcon />
         </IconButton>
+        
+        {selectedFile && (
+          <Box sx={{ 
+            position: 'absolute',
+            top: '-30px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            backgroundColor: theme.palette.background.paper,
+            padding: '4px 12px',
+            borderRadius: '8px',
+            fontSize: '0.875rem',
+            boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}>
+            <span>{selectedFile.name}</span>
+            <IconButton
+              size="small"
+              onClick={() => setSelectedFile(null)}
+              sx={{ padding: '2px' }}
+            >
+              ×
+            </IconButton>
+          </Box>
+        )}
+
         <TextField
           fullWidth
           variant="standard"
@@ -84,7 +118,7 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
               scrollbarColor: `${theme.palette.grey[400]} ${theme.palette.background.paper}`,
             },
           }}
-          placeholder="输入消息..."
+          placeholder={selectedFile ? "添加消息描述..." : "输入消息..."}
           multiline
           maxRows={5}
           sx={{
@@ -133,7 +167,7 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
         ref={fileInputRef}
         onChange={handleFileSelect}
         style={{ display: 'none' }}
-        accept="image/*,.pdf,.doc,.docx,.txt"  // 可以根据需要调整接受的文件类型
+        accept="image/*,.pdf,.doc,.docx,.txt"
       />
     </Box>
   );
