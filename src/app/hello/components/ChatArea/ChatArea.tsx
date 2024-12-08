@@ -1,12 +1,9 @@
 import React, { useState } from 'react';
-import { Box, Paper, Typography, IconButton, Snackbar, Popover, CircularProgress } from '@mui/material';
+import { Box, Paper, Typography, Popover, CircularProgress } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import { styled } from '@mui/material/styles';
-import ContentCopyIcon from '@mui/icons-material/ContentCopy';
-import ThumbUpIcon from '@mui/icons-material/ThumbUp';
-import ThumbDownIcon from '@mui/icons-material/ThumbDown';
 import FormatQuoteIcon from '@mui/icons-material/FormatQuote';
-import VolumeUpIcon from '@mui/icons-material/VolumeUp';
+import IconButton from '@mui/material/IconButton';
 
 interface Message {
  id: string;
@@ -44,7 +41,6 @@ const ChatArea: React.FC<ChatAreaProps> = ({
 }) => {
  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
  const [selectedText, setSelectedText] = useState('');
- const [snackbarOpen, setSnackbarOpen] = useState(false);
  const theme = useTheme();
 
  const handleTextSelection = (event: React.MouseEvent<HTMLDivElement>) => {
@@ -59,16 +55,6 @@ const ChatArea: React.FC<ChatAreaProps> = ({
  
  const handlePopoverClose = () => {
    setAnchorEl(null);
- };
-
- const handleCopy = (content: string) => {
-   navigator.clipboard.writeText(content);
-   setSnackbarOpen(true);
- };
-
- const handleReadAloud = (content: string) => {
-   const speech = new SpeechSynthesisUtterance(content);
-   window.speechSynthesis.speak(speech);
  };
 
  return (
@@ -115,22 +101,6 @@ const ChatArea: React.FC<ChatAreaProps> = ({
              >
                {message.content}
              </Typography>
-             {!message.isUser && (
-               <Box sx={{ position: 'absolute', right: 8, bottom: 8, display: 'flex' }}>
-                 <IconButton size="small" onClick={() => handleReadAloud(message.content)}>
-                   <VolumeUpIcon fontSize="small" />
-                 </IconButton>
-                 <IconButton size="small" onClick={() => handleCopy(message.content)}>
-                   <ContentCopyIcon fontSize="small" />
-                 </IconButton>
-                 <IconButton size="small" onClick={() => onBestResponse(message.id)}>
-                   <ThumbUpIcon fontSize="small" />
-                 </IconButton>
-                 <IconButton size="small" onClick={() => onErrorResponse(message.id)}>
-                   <ThumbDownIcon fontSize="small" />
-                 </IconButton>
-               </Box>
-             )}
            </MessagePaper>
          </Box>
        ))}
@@ -157,13 +127,6 @@ const ChatArea: React.FC<ChatAreaProps> = ({
          <FormatQuoteIcon /> 引用
        </IconButton>
      </Popover>
-     <Snackbar
-       anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-       open={snackbarOpen}
-       autoHideDuration={2000}
-       onClose={() => setSnackbarOpen(false)}
-       message="已复制到剪贴板"
-     />
    </Box>
  );
 };
