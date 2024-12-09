@@ -1,17 +1,26 @@
 import React, { useState } from 'react';
 import { styled, useTheme } from '@mui/material/styles';
 import Drawer from '@mui/material/Drawer';
+import List from '@mui/material/List';
 import Divider from '@mui/material/Divider';
 import IconButton from '@mui/material/IconButton';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
-import SidebarHeader from './SidebarHeader';
-import List from '@mui/material/List';
 import ListItem from '@mui/material/ListItem';
 import ListItemText from '@mui/material/ListItemText';
-import { Conversation } from '../../types';
-import ChatMenu from '../Menus/ChatMenu';
-import RenameDialog from '../Dialogs/RenameDialog';
+import Box from '@mui/material/Box';
+import CircularProgress from '@mui/material/CircularProgress';
+import AddIcon from '@mui/icons-material/Add';
+import MoreVertIcon from '@mui/icons-material/MoreVert';
+import Menu from '@mui/material/Menu';
+import MenuItem from '@mui/material/MenuItem';
+import ListItemButton from '@mui/material/ListItemButton';
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import DialogActions from '@mui/material/DialogActions';
+import Button from '@mui/material/Button';
+import TextField from '@mui/material/TextField';
 
 const drawerWidth = 240;
 
@@ -22,6 +31,11 @@ const DrawerHeader = styled('div')(({ theme }) => ({
   padding: theme.spacing(0, 1),
   ...theme.mixins.toolbar,
 }));
+
+interface Conversation {
+  id: string;
+  title: string;
+}
 
 interface SidebarProps {
   open: boolean;
@@ -34,30 +48,100 @@ interface SidebarProps {
   onDeleteConversation: (conversationId: string) => void;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ 
-  open, 
-  handleDrawerClose, 
-  handleStartNewChat, 
-  conversations, 
+const RenameDialog: React.FC<{
+  open: boolean;
+  currentName: string;
+  onClose: () => void;
+  onRename: (newName: string) => void;
+}> = ({ open, currentName, onClose, onRename }) => {
+  const [newName, setNewName] = useState(currentName);
+
+  const handleSubmit = () => {
+    if (newName.trim()) {
+      onRename(newName.trim());
+      onClose();
+    }
+  };
+
+  return (
+    <Dialog open={open} onClose={onClose}>
+      <DialogTitle>重命名会话</DialogTitle>
+      <DialogContent>
+        <TextField
+          autoFocus
+          margin="dense"
+          label="会话名称"
+          type="text"
+          fullWidth
+          value={newName}
+          onChange={(e) => setNewName(e.target.value)}
+        />
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onClose}>取消</Button>
+        <Button onClick={handleSubmit}>确认</Button>
+      </DialogActions>
+    </Dialog>
+  );
+};
+
+const ConversationMenu: React.FC<{
+  anchorEl: null | HTMLElement;
+  open: boolean;
+  onClose: () => void;
+  onRename: () => void;
+  onDelete: () => void;
+}> = ({ anchorEl, open, onClose, onRename, onDelete }) => (
+  <Menu
+    anchorEl={anchorEl}
+    open={open}
+    onClose={onClose}
+    anchorOrigin={{
+      vertical: 'top',
+      horizontal: 'right',
+    }}
+    transformOrigin={{
+      vertical: 'top',
+      horizontal: 'right',
+    }}
+  >
+    <MenuItem onClick={() => { onRename(); onClose(); }}>重命名</MenuItem>
+    <MenuItem onClick={() => { onDelete(); onClose(); }}>删除</MenuItem>
+  </Menu>
+);
+
+const Sidebar: React.FC<SidebarProps> = ({
+  open,
+  handleDrawerClose,
+  handleStartNewChat,
+  conversations,
   currentConversationId,
   onSwitchConversation,
   onRenameConversation,
-  onDeleteConversation
+  onDeleteConversation,
 }) => {
   const theme = useTheme();
-  const [renameDialogOpen, setRenameDialogOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
+  const [renameDialogOpen, setRenameDialogOpen] = useState(false);
 
-  const handleNewChat = () => {
-    handleStartNewChat();
+  const handleMenuClick = (event: React.MouseEvent<HTMLElement>, conversation: Conversation) => {
+    event.stopPropagation();
+    setMenuAnchorEl(event.currentTarget);
+    setSelectedConversation(conversation);
   };
 
-  const handleRenameClick = (conversation: Conversation) => {
-    setSelectedConversation(conversation);
+  const handleMenuClose = () => {
+    setMenuAnchorEl(null);
+    setSelectedConversation(null);
+  };
+
+  const handleRenameClick = () => {
     setRenameDialogOpen(true);
   };
 
-  const handleRenameClose = () => {
+  const handleRenameDialogClose = () => {
     setRenameDialogOpen(false);
     setSelectedConversation(null);
   };
@@ -66,7 +150,12 @@ const Sidebar: React.FC<SidebarProps> = ({
     if (selectedConversation) {
       onRenameConversation(selectedConversation.id, newTitle);
     }
-    handleRenameClose();
+  };
+
+  const handleDelete = () => {
+    if (selectedConversation) {
+      onDeleteConversation(selectedConversation.id);
+    }
   };
 
   return (
@@ -86,43 +175,74 @@ const Sidebar: React.FC<SidebarProps> = ({
       open={open}
     >
       <DrawerHeader>
-        <SidebarHeader onNewConversation={handleNewChat} />
-        <IconButton 
-          onClick={handleDrawerClose}
-          sx={{
-            padding: '20px',
-            width: '40px',    // 设置固定宽度
-            height: '40px',   // 设置固定高度 
-            '& .MuiSvgIcon-root': {
-              fontSize: '2rem',
-            }
-          }}
-        >
+        <IconButton onClick={handleStartNewChat} sx={{ p: '12px' }}>
+          <AddIcon />
+        </IconButton>
+        <IconButton onClick={handleDrawerClose}>
           {theme.direction === 'ltr' ? <ChevronLeftIcon /> : <ChevronRightIcon />}
         </IconButton>
       </DrawerHeader>
       <Divider />
-      <List>
-        {conversations.map((conversation) => (
-          <ListItem 
-            button 
-            key={conversation.id}
-            selected={conversation.id === currentConversationId}
-            onClick={() => onSwitchConversation(conversation.id)}
-          >
-            <ListItemText primary={conversation.title} />
-            <ChatMenu
-              onRenameClick={() => handleRenameClick(conversation)}
-              onDelete={() => onDeleteConversation(conversation.id)}
-            />
-          </ListItem>
-        ))}
+      <List sx={{ overflow: 'auto' }}>
+        {isLoading ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
+            <CircularProgress size={24} />
+          </Box>
+        ) : (
+          conversations.map((conversation) => (
+            <ListItem
+              key={conversation.id}
+              disablePadding
+              secondaryAction={
+                <IconButton
+                  edge="end"
+                  onClick={(e) => handleMenuClick(e, conversation)}
+                  sx={{ visibility: currentConversationId === conversation.id ? 'visible' : 'hidden' }}
+                >
+                  <MoreVertIcon />
+                </IconButton>
+              }
+              sx={{
+                '&:hover .MuiIconButton-root': {
+                  visibility: 'visible',
+                },
+              }}
+            >
+              <ListItemButton
+                selected={conversation.id === currentConversationId}
+                onClick={() => onSwitchConversation(conversation.id)}
+                sx={{
+                  py: 2,
+                  '&.Mui-selected': {
+                    backgroundColor: theme.palette.action.selected,
+                  },
+                }}
+              >
+                <ListItemText
+                  primary={conversation.title}
+                  primaryTypographyProps={{
+                    noWrap: true,
+                  }}
+                />
+              </ListItemButton>
+            </ListItem>
+          ))
+        )}
       </List>
+
+      <ConversationMenu
+        anchorEl={menuAnchorEl}
+        open={Boolean(menuAnchorEl)}
+        onClose={handleMenuClose}
+        onRename={handleRenameClick}
+        onDelete={handleDelete}
+      />
+
       <RenameDialog
-        isOpen={renameDialogOpen}
-        onClose={handleRenameClose}
-        onRename={handleRename}
+        open={renameDialogOpen}
         currentName={selectedConversation?.title || ''}
+        onClose={handleRenameDialogClose}
+        onRename={handleRename}
       />
     </Drawer>
   );

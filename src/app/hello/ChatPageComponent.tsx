@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { styled } from '@mui/material/styles';
 import Box from '@mui/material/Box';
 import CssBaseline from '@mui/material/CssBaseline';
@@ -9,7 +9,21 @@ import InputArea from './components/InputArea/InputArea';
 import WelcomeScreen from './components/WelcomeScreen/WelcomeScreen';
 import { useTheme } from '../contexts/ThemeContext';
 import styles from './styles/ChatPage.module.css';
-import { Conversation, Message } from './types';
+
+interface Message {
+  id: string;
+  content: string;
+  isUser: boolean;
+  fileInfo?: {
+    name: string;
+    type: string;
+  };
+}
+
+interface Conversation {
+  id: string;
+  title: string;
+}
 
 const drawerWidth = 240;
 
@@ -32,7 +46,7 @@ const Main = styled('main', { shouldForwardProp: (prop) => prop !== 'open' })<{
   height: '100vh',
   display: 'flex',
   flexDirection: 'column',
-  paddingTop: theme.mixins.toolbar.minHeight, 
+  paddingTop: theme.mixins.toolbar.minHeight,
   backgroundColor: theme.palette.background.default,
 }));
 
@@ -45,18 +59,47 @@ const ChatPageComponent: React.FC = () => {
   const [selectedModel, setSelectedModel] = useState('gpt-3.5-turbo');
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleDrawerOpen = () => {
-    setOpen(true);
+  useEffect(() => {
+    const savedConversations = localStorage.getItem('conversations');
+    const savedMessagesMap = localStorage.getItem('messagesMap');
+    
+    if (savedConversations) {
+      setConversations(JSON.parse(savedConversations));
+    }
+    if (savedMessagesMap) {
+      setMessagesMap(JSON.parse(savedMessagesMap));
+    }
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem('conversations', JSON.stringify(conversations));
+    localStorage.setItem('messagesMap', JSON.stringify(messagesMap));
+  }, [conversations, messagesMap]);
+
+  const updateConversationTitle = (conversationId: string, messages: Message[]) => {
+    if (messages.length >= 2) {
+      const firstUserMessage = messages.find(m => m.isUser);
+      if (firstUserMessage) {
+        const newTitle = firstUserMessage.content.length > 20 
+          ? `${firstUserMessage.content.slice(0, 20)}...`
+          : firstUserMessage.content;
+        
+        setConversations(prevConversations =>
+          prevConversations.map(conv =>
+            conv.id === conversationId ? { ...conv, title: newTitle } : conv
+          )
+        );
+      }
+    }
   };
 
-  const handleDrawerClose = () => {
-    setOpen(false);
-  };
+  const handleDrawerOpen = () => setOpen(true);
+  const handleDrawerClose = () => setOpen(false);
 
   const handleStartNewChat = () => {
     const newConversation: Conversation = {
       id: Date.now().toString(),
-      title: `新对话 ${conversations.length + 1}`
+      title: `新会话 ${conversations.length + 1}`
     };
     setConversations([...conversations, newConversation]);
     setCurrentConversationId(newConversation.id);
@@ -78,10 +121,13 @@ const ChatPageComponent: React.FC = () => {
       })
     };
     
-    setMessagesMap(prevMap => ({
-      ...prevMap,
-      [currentConversationId]: [...(prevMap[currentConversationId] || []), userMessage]
-    }));
+    setMessagesMap(prevMap => {
+      const updatedMessages = [...(prevMap[currentConversationId] || []), userMessage];
+      return {
+        ...prevMap,
+        [currentConversationId]: updatedMessages
+      };
+    });
 
     setIsLoading(true);
 
@@ -89,6 +135,7 @@ const ChatPageComponent: React.FC = () => {
       const formData = new FormData();
       formData.append('message', content);
       formData.append('model', selectedModel);
+      formData.append('conversationId', currentConversationId);
       if (file) {
         formData.append('file', file);
       }
@@ -110,10 +157,14 @@ const ChatPageComponent: React.FC = () => {
         isUser: false
       };
 
-      setMessagesMap(prevMap => ({
-        ...prevMap,
-        [currentConversationId]: [...(prevMap[currentConversationId] || []), aiMessage]
-      }));
+      setMessagesMap(prevMap => {
+        const updatedMessages = [...(prevMap[currentConversationId] || []), aiMessage];
+        setTimeout(() => updateConversationTitle(currentConversationId, updatedMessages), 0);
+        return {
+          ...prevMap,
+          [currentConversationId]: updatedMessages
+        };
+      });
 
     } catch (error) {
       console.error('Error:', error);
@@ -123,19 +174,21 @@ const ChatPageComponent: React.FC = () => {
   };
 
   const handleBestResponse = (messageId: string) => {
-    console.log('Best response:', messageId);
+    console.log('标记为最佳回复:', messageId);
   };
 
   const handleErrorResponse = (messageId: string) => {
-    console.log('Error response:', messageId);
+    console.log('标记为错误回复:', messageId);
   };
 
   const handleQuoteReply = (content: string) => {
-    console.log('Quote reply:', content);
+    if (currentConversationId) {
+      handleSendMessage(`> ${content}\n\n`);
+    }
   };
 
   const handleUpgrade = () => {
-    console.log('Upgrade clicked');
+    console.log('升级账户');
   };
 
   const handleSwitchConversation = (conversationId: string) => {
@@ -166,6 +219,12 @@ const ChatPageComponent: React.FC = () => {
       return newMap;
     });
   };
+
+  useEffect(() => {
+    if (conversations.length === 0) {
+      handleStartNewChat();
+    }
+  }, []);
 
   return (
     <Box sx={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
