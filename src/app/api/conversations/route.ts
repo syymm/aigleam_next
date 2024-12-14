@@ -1,10 +1,13 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getCurrentUserId } from '@/lib/auth';
 
 export async function GET(request: Request) {
   try {
-    // TODO: 获取实际的用户ID，暂时使用1作为示例
-    const userId = 1;
+    const userId = await getCurrentUserId();
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
     const conversations = await prisma.conversation.findMany({
       where: { userId },
@@ -19,18 +22,18 @@ export async function GET(request: Request) {
     return NextResponse.json(conversations);
   } catch (error) {
     console.error('Error fetching conversations:', error);
-    return NextResponse.json(
-      { error: '获取会话列表失败' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: '获取会话列表失败' }, { status: 500 });
   }
 }
 
 export async function POST(request: Request) {
   try {
-    const { title } = await request.json();
-    const userId = 1; // TODO: 获取实际的用户ID
+    const userId = await getCurrentUserId();
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
+    const { title } = await request.json();
     const conversation = await prisma.conversation.create({
       data: {
         title,
@@ -41,9 +44,6 @@ export async function POST(request: Request) {
     return NextResponse.json(conversation);
   } catch (error) {
     console.error('Error creating conversation:', error);
-    return NextResponse.json(
-      { error: '创建会话失败' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: '创建会话失败' }, { status: 500 });
   }
 }

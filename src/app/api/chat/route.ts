@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import { ChatCompletionMessageParam } from 'openai/resources/chat/completions';
+import { prisma } from '@/lib/prisma';
+import { getCurrentUserId } from '@/lib/auth';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
@@ -48,10 +50,8 @@ const SUPPORTED_MIMES = {
 };
 
 function getFileType(file: File): 'image' | 'text' | 'document' | 'unknown' {
-  // 获取文件扩展名（转换为小写）
   const extension = file.name.split('.').pop()?.toLowerCase() || '';
   
-  // 首先检查文件扩展名
   if (SUPPORTED_EXTENSIONS.images.includes(extension)) {
     return 'image';
   }
@@ -62,7 +62,6 @@ function getFileType(file: File): 'image' | 'text' | 'document' | 'unknown' {
     return 'document';
   }
 
-  // 如果扩展名检查未确定类型，则检查 MIME 类型
   if (SUPPORTED_MIMES.images.has(file.type)) {
     return 'image';
   }
@@ -78,15 +77,35 @@ function getFileType(file: File): 'image' | 'text' | 'document' | 'unknown' {
 
 export async function POST(request: Request) {
   try {
+    const userId = await getCurrentUserId();
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const formData = await request.formData();
     const message = formData.get('message') as string;
     const model = formData.get('model') as string;
+    const conversationId = formData.get('conversationId') as string;
     const file = formData.get('file') as File | null;
+
+    // 验证会话所有权
+    const conversation = await prisma.conversation.findUnique({
+      where: {
+        id: conversationId,
+        userId,
+      }
+    });
+
+    if (!conversation) {
+      return NextResponse.json({ error: 'Conversation not found' }, { status: 404 });
+    }
 
     let messages: ChatCompletionMessageParam[] = [{
       role: "user",
       content: message
     }];
+
+    let fileInfo = null;
 
     if (file) {
       const bytes = await file.arrayBuffer();
@@ -112,6 +131,11 @@ export async function POST(request: Request) {
               }
             ]
           }];
+          fileInfo = {
+            fileName: file.name,
+            fileType: file.type,
+            fileUrl: `data:${mimeType};base64,${base64Image}`
+          };
           break;
         }
         case 'text': {
@@ -120,6 +144,11 @@ export async function POST(request: Request) {
             role: "user",
             content: `${message}\n\n文件内容：\n${textContent}`
           }];
+          fileInfo = {
+            fileName: file.name,
+            fileType: file.type,
+            fileContent: textContent
+          };
           break;
         }
         case 'document': {
@@ -135,6 +164,11 @@ export async function POST(request: Request) {
               role: "user",
               content: `${message}\n\n已上传文档文件：${file.name}\n文件ID：${fileUpload.id}`
             }];
+            fileInfo = {
+              fileName: file.name,
+              fileType: file.type,
+              fileId: fileUpload.id
+            };
           } catch (error) {
             console.error('File upload error:', error);
             messages = [{
@@ -153,6 +187,21 @@ export async function POST(request: Request) {
       }
     }
 
+    // 保存用户消息
+    const userMessage = await prisma.message.create({
+      data: {
+        content: message,
+        isUser: true,
+        conversationId,
+        ...(fileInfo && {
+          fileName: fileInfo.fileName,
+          fileType: fileInfo.fileType,
+          fileUrl: fileInfo.fileUrl
+        })
+      }
+    });
+
+    // 调用 OpenAI API
     const completion = await openai.chat.completions.create({
       model: model,
       messages: messages,
@@ -161,9 +210,25 @@ export async function POST(request: Request) {
 
     const reply = completion.choices[0]?.message?.content || '';
 
-    return NextResponse.json({ 
+    // 保存 AI 回复
+    const aiMessage = await prisma.message.create({
+      data: {
+        content: reply,
+        isUser: false,
+        conversationId
+      }
+    });
+
+    // 更新会话的最后更新时间
+    await prisma.conversation.update({
+      where: { id: conversationId },
+      data: { updatedAt: new Date() }
+    });
+
+    return NextResponse.json({
       reply,
-      messageId: Date.now().toString()
+      messageId: aiMessage.id,
+      userMessageId: userMessage.id
     });
   } catch (error) {
     console.error('OpenAI API error:', error);

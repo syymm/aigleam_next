@@ -1,10 +1,15 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getCurrentUserId } from '@/lib/auth';
 
 export async function POST(request: Request) {
   try {
+    const userId = await getCurrentUserId();
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { content, conversationId, isUser, fileUrl, fileType, fileName } = await request.json();
-    const userId = 1; // TODO: 获取实际的用户ID
 
     // 验证会话所有权
     const conversation = await prisma.conversation.findUnique({

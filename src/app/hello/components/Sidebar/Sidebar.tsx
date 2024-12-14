@@ -21,6 +21,8 @@ import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
 import Button from '@mui/material/Button';
 import TextField from '@mui/material/TextField';
+import Snackbar from '@mui/material/Snackbar';
+import Alert from '@mui/material/Alert';
 
 const drawerWidth = 240;
 
@@ -75,6 +77,11 @@ const RenameDialog: React.FC<{
           fullWidth
           value={newName}
           onChange={(e) => setNewName(e.target.value)}
+          onKeyPress={(e) => {
+            if (e.key === 'Enter') {
+              handleSubmit();
+            }
+          }}
         />
       </DialogContent>
       <DialogActions>
@@ -125,6 +132,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
   const [renameDialogOpen, setRenameDialogOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleMenuClick = (event: React.MouseEvent<HTMLElement>, conversation: Conversation) => {
     event.stopPropagation();
@@ -146,15 +154,53 @@ const Sidebar: React.FC<SidebarProps> = ({
     setSelectedConversation(null);
   };
 
-  const handleRename = (newTitle: string) => {
+  const handleRename = async (newTitle: string) => {
     if (selectedConversation) {
-      onRenameConversation(selectedConversation.id, newTitle);
+      setIsLoading(true);
+      try {
+        await onRenameConversation(selectedConversation.id, newTitle);
+        handleRenameDialogClose();
+      } catch (error) {
+        setError('重命名会话失败');
+      } finally {
+        setIsLoading(false);
+      }
     }
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (selectedConversation) {
-      onDeleteConversation(selectedConversation.id);
+      setIsLoading(true);
+      try {
+        await onDeleteConversation(selectedConversation.id);
+        handleMenuClose();
+      } catch (error) {
+        setError('删除会话失败');
+      } finally {
+        setIsLoading(false);
+      }
+    }
+  };
+
+  const handleSwitchConversation = async (conversationId: string) => {
+    setIsLoading(true);
+    try {
+      await onSwitchConversation(conversationId);
+    } catch (error) {
+      setError('切换会话失败');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleNewChat = async () => {
+    setIsLoading(true);
+    try {
+      await handleStartNewChat();
+    } catch (error) {
+      setError('创建新会话失败');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -175,7 +221,11 @@ const Sidebar: React.FC<SidebarProps> = ({
       open={open}
     >
       <DrawerHeader>
-        <IconButton onClick={handleStartNewChat} sx={{ p: '12px' }}>
+        <IconButton 
+          onClick={handleNewChat} 
+          sx={{ p: '12px' }}
+          disabled={isLoading}
+        >
           <AddIcon />
         </IconButton>
         <IconButton onClick={handleDrawerClose}>
@@ -210,7 +260,8 @@ const Sidebar: React.FC<SidebarProps> = ({
             >
               <ListItemButton
                 selected={conversation.id === currentConversationId}
-                onClick={() => onSwitchConversation(conversation.id)}
+                onClick={() => handleSwitchConversation(conversation.id)}
+                disabled={isLoading}
                 sx={{
                   py: 2,
                   '&.Mui-selected': {
@@ -244,6 +295,21 @@ const Sidebar: React.FC<SidebarProps> = ({
         onClose={handleRenameDialogClose}
         onRename={handleRename}
       />
+
+      <Snackbar
+        open={!!error}
+        autoHideDuration={3000}
+        onClose={() => setError(null)}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert 
+          onClose={() => setError(null)} 
+          severity="error" 
+          sx={{ width: '100%' }}
+        >
+          {error}
+        </Alert>
+      </Snackbar>
     </Drawer>
   );
 };
