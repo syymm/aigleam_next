@@ -9,6 +9,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // 只获取已经存在的会话
     const conversations = await prisma.conversation.findMany({
       where: { userId },
       orderBy: { updatedAt: 'desc' },
@@ -22,7 +23,10 @@ export async function GET(request: Request) {
     return NextResponse.json(conversations);
   } catch (error) {
     console.error('Error fetching conversations:', error);
-    return NextResponse.json({ error: '获取会话列表失败' }, { status: 500 });
+    return NextResponse.json(
+      { error: '获取会话列表失败' },
+      { status: 500 }
+    );
   }
 }
 
@@ -34,6 +38,8 @@ export async function POST(request: Request) {
     }
 
     const { title } = await request.json();
+
+    // 创建新会话（只在实际发送消息时调用）
     const conversation = await prisma.conversation.create({
       data: {
         title,
@@ -44,6 +50,9 @@ export async function POST(request: Request) {
     return NextResponse.json(conversation);
   } catch (error) {
     console.error('Error creating conversation:', error);
-    return NextResponse.json({ error: '创建会话失败' }, { status: 500 });
+    return NextResponse.json(
+      { error: '创建会话失败' },
+      { status: 500 }
+    );
   }
 }
