@@ -74,12 +74,10 @@ const ChatPageComponent: React.FC = () => {
         }
         if (response.ok) {
           const data = await response.json();
-          // 确保按创建时间倒序排列
           const sortedData = data.sort((a: Conversation, b: Conversation) => {
             return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
           });
           setConversations(sortedData);
-          // 直接创建一个新的临时会话
           handleStartNewChat();
         }
       } catch (error) {
@@ -95,13 +93,6 @@ const ChatPageComponent: React.FC = () => {
 
   const handleStartNewChat = () => {
     const tempId = `temp-${Date.now()}`;
-    const tempConversation: Conversation = {
-      id: tempId,
-      title: `新会话 ${conversations.length + 1}`,
-      createdAt: new Date().toISOString()
-    };
-    // 新会话添加到数组开头
-    setConversations(prevConversations => [tempConversation, ...prevConversations]);
     setCurrentConversationId(tempId);
     setMessagesMap(prevMap => ({...prevMap, [tempId]: []}));
   };
@@ -112,7 +103,6 @@ const ChatPageComponent: React.FC = () => {
     try {
       let actualConversationId = currentConversationId;
 
-      // 如果是临时会话，先创建实际会话
       if (currentConversationId.startsWith('temp-')) {
         const response = await fetch('/api/conversations', {
           method: 'POST',
@@ -130,12 +120,6 @@ const ChatPageComponent: React.FC = () => {
 
         const newConversation = await response.json();
         actualConversationId = newConversation.id;
-
-        // 更新状态，保持新会话在顶部
-        setConversations(prevConversations => [
-          newConversation,
-          ...prevConversations.filter(conv => conv.id !== currentConversationId)
-        ]);
         setCurrentConversationId(actualConversationId);
 
         // 转移临时消息
@@ -146,6 +130,16 @@ const ChatPageComponent: React.FC = () => {
           newMap[actualConversationId] = tempMessages;
           return newMap;
         });
+
+        // 立即添加到会话列表
+        setConversations(prevConversations => [
+          {
+            id: actualConversationId,
+            title: content.length > 20 ? `${content.slice(0, 20)}...` : content,
+            createdAt: new Date().toISOString()
+          },
+          ...prevConversations
+        ]);
       }
 
       // 立即显示用户消息
@@ -166,7 +160,6 @@ const ChatPageComponent: React.FC = () => {
         [actualConversationId]: [...(prevMap[actualConversationId] || []), userMessage]
       }));
 
-      // 开始加载状态
       setIsLoading(true);
 
       // 发送到后端
@@ -218,11 +211,6 @@ const ChatPageComponent: React.FC = () => {
 
   const handleRenameConversation = async (conversationId: string, newTitle: string) => {
     if (conversationId.startsWith('temp-')) {
-      setConversations(prevConversations =>
-        prevConversations.map(conv =>
-          conv.id === conversationId ? { ...conv, title: newTitle } : conv
-        )
-      );
       return;
     }
 
@@ -249,9 +237,6 @@ const ChatPageComponent: React.FC = () => {
 
   const handleDeleteConversation = async (conversationId: string) => {
     if (conversationId.startsWith('temp-')) {
-      setConversations(prevConversations =>
-        prevConversations.filter(conv => conv.id !== conversationId)
-      );
       if (currentConversationId === conversationId) {
         handleStartNewChat();
       }
