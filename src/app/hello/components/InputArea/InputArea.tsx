@@ -5,6 +5,10 @@ import AttachFileIcon from '@mui/icons-material/AttachFile';
 import { useTheme } from '../../../contexts/ThemeContext';
 import styles from '../../styles/ChatPage.module.css';
 import { InputAreaProps } from '../../types';
+import CloseIcon from '@mui/icons-material/Close';
+import ImageIcon from '@mui/icons-material/Image';
+import DescriptionIcon from '@mui/icons-material/Description';
+import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
 
 const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
   const { theme, themeMode } = useTheme();
@@ -46,20 +50,34 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
     fileInputRef.current?.click();
   };
 
+  const getFileIcon = (fileType: string) => {
+    const iconStyle = {
+      fontSize: '16px', // 设置更小的图标尺寸
+      marginRight: '4px',
+    };
+
+    if (fileType.startsWith('image/')) {
+      return <ImageIcon sx={{ ...iconStyle, color: '#4CAF50' }} />; // 图片文件使用绿色
+    } else if (fileType.includes('pdf')) {
+      return <DescriptionIcon sx={{ ...iconStyle, color: '#F44336' }} />; // PDF文件使用红色
+    } else if (fileType.includes('document') || fileType.includes('text')) {
+      return <InsertDriveFileIcon sx={{ ...iconStyle, color: '#2196F3' }} />; // 文档使用蓝色
+    }
+    return <InsertDriveFileIcon sx={{ ...iconStyle, color: '#757575' }} />; // 其他文件使用灰色
+  };
+
   return (
-    <Box 
-      className={themeMode === 'dark' ? styles.dark : styles.light}
-      sx={{ 
-        padding: 2, 
-        backgroundColor: theme.palette.background.default,
-        display: 'flex',
-        justifyContent: 'center',
-        position: 'relative',
-      }}
-    >
+    <Box sx={{ 
+      p: 2,
+      display: 'flex',
+      alignItems: 'flex-end',
+      justifyContent: 'center',
+      position: 'relative',
+    }}>
       <Box sx={{ 
         display: 'flex', 
-        alignItems: 'center',
+        flexDirection: 'column',
+        alignItems: 'stretch',
         backgroundColor: theme.palette.background.paper,
         borderRadius: '16px',
         padding: '8px 16px',
@@ -67,101 +85,105 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
         boxShadow: '0 2px 10px rgba(0, 0, 0, 0.1)',
         border: `1px solid ${theme.palette.divider}`,
       }}>
-        <IconButton 
-          onClick={handleAttachClick} 
-          sx={{ 
-            color: theme.palette.primary.main,
-            padding: '8px',
-            '&:hover': { backgroundColor: 'transparent' }
-          }}
-        >
-          <AttachFileIcon />
-        </IconButton>
-        
+        {/* 文件预览区域 - 优化宽度和布局 */}
         {selectedFile && (
           <Box sx={{ 
-            position: 'absolute',
-            top: '-30px',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            backgroundColor: theme.palette.background.paper,
-            padding: '4px 12px',
-            borderRadius: '8px',
-            fontSize: '0.875rem',
-            boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
             display: 'flex',
             alignItems: 'center',
-            gap: '8px'
+            gap: '4px', // 减小间距
+            padding: '4px 8px',
+            marginBottom: '4px',
+            backgroundColor: theme.palette.action.hover,
+            borderRadius: '4px',
+            maxWidth: 'fit-content',
+            ml: '40px',
           }}>
-            <span>{selectedFile.name}</span>
+            {getFileIcon(selectedFile.type)}
+            <span style={{ 
+              fontSize: '0.875rem',
+              maxWidth: '200px',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}>
+              {selectedFile.name}
+            </span>
             <IconButton
               size="small"
               onClick={() => setSelectedFile(null)}
-              sx={{ padding: '2px' }}
+              sx={{ 
+                padding: '2px',
+                marginLeft: '2px', // 减小关闭按钮的左边距
+                '&:hover': { backgroundColor: 'rgba(0,0,0,0.04)' }
+              }}
             >
-              ×
+              <CloseIcon sx={{ fontSize: 14 }} />
             </IconButton>
           </Box>
         )}
 
-        <TextField
-          fullWidth
-          variant="standard"
-          value={inputValue}
-          onChange={(e) => setInputValue(e.target.value)}
-          onKeyPress={handleKeyPress}
-          InputProps={{
-            disableUnderline: true,
-            style: { 
-              color: theme.palette.text.primary,
-              scrollbarWidth: 'thin',
-              scrollbarColor: `${theme.palette.grey[400]} ${theme.palette.background.paper}`,
-            },
-          }}
-          placeholder={selectedFile ? "添加消息描述..." : "输入消息..."}
-          multiline
-          maxRows={5}
-          sx={{
-            flexGrow: 1,
-            '& .MuiInputBase-input': {
-              padding: '12px 8px',
-              '&::placeholder': {
-                color: theme.palette.text.secondary,
-                opacity: 0.7,
+        {/* 输入区域 - 调整对齐 */}
+        <Box sx={{ 
+          display: 'flex', 
+          alignItems: 'flex-start', // 改为顶部对齐
+        }}>
+          <IconButton 
+            onClick={handleAttachClick} 
+            sx={{ 
+              color: theme.palette.primary.main,
+              padding: '8px',
+              mt: '6px', // 微调回形针图标位置
+              '&:hover': { backgroundColor: 'transparent' }
+            }}
+          >
+            <AttachFileIcon />
+          </IconButton>
+
+          <TextField
+            fullWidth
+            variant="standard"
+            value={inputValue}
+            onChange={(e) => setInputValue(e.target.value)}
+            onKeyPress={handleKeyPress}
+            InputProps={{
+              disableUnderline: true,
+              style: { 
+                color: theme.palette.text.primary,
               },
-              '&::-webkit-scrollbar': {
-                width: '8px',
+            }}
+            placeholder={selectedFile ? "添加消息描述..." : "输入消息..."}
+            multiline
+            maxRows={5}
+            sx={{
+              flexGrow: 1,
+              '& .MuiInputBase-input': {
+                padding: '12px 8px',
+                '&::placeholder': {
+                  color: theme.palette.text.secondary,
+                  opacity: 0.7,
+                },
               },
-              '&::-webkit-scrollbar-track': {
-                backgroundColor: theme.palette.background.paper,
+              '& .MuiInputBase-root': {
+                backgroundColor: 'transparent',
+                alignItems: 'center',
               },
-              '&::-webkit-scrollbar-thumb': {
-                backgroundColor: theme.palette.grey[400],
-                borderRadius: '4px',
-              },
-              '&::-webkit-scrollbar-thumb:hover': {
-                backgroundColor: theme.palette.grey[600],
-              },
-            },
-            '& .MuiInputBase-root': {
-              backgroundColor: 'transparent',
-              overflowY: 'auto',
-              display: 'flex',
-              alignItems: 'center',
-            },
-          }}
-        />
-        <IconButton 
-          onClick={handleSend} 
-          sx={{ 
-            color: theme.palette.primary.main,
-            padding: '8px',
-            '&:hover': { backgroundColor: 'transparent' }
-          }}
-        >
-          <SendIcon />
-        </IconButton>
+            }}
+          />
+
+          <IconButton 
+            onClick={handleSend} 
+            sx={{ 
+              color: theme.palette.primary.main,
+              padding: '8px',
+              mt: '6px', // 微调发送图标位置
+              '&:hover': { backgroundColor: 'transparent' }
+            }}
+          >
+            <SendIcon />
+          </IconButton>
+        </Box>
       </Box>
+
       <input
         type="file"
         ref={fileInputRef}
