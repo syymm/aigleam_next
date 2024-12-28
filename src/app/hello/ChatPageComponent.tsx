@@ -122,16 +122,6 @@ const ChatPageComponent: React.FC = () => {
         actualConversationId = newConversation.id;
         setCurrentConversationId(actualConversationId);
 
-        // 转移临时消息
-        const tempMessages = messagesMap[currentConversationId] || [];
-        setMessagesMap(prevMap => {
-          const newMap = { ...prevMap };
-          delete newMap[currentConversationId];
-          newMap[actualConversationId] = tempMessages;
-          return newMap;
-        });
-
-        // 立即添加到会话列表
         setConversations(prevConversations => [
           {
             id: actualConversationId,
@@ -162,7 +152,6 @@ const ChatPageComponent: React.FC = () => {
 
       setIsLoading(true);
 
-      // 发送到后端
       const formData = new FormData();
       formData.append('message', content);
       formData.append('model', selectedModel);
@@ -180,27 +169,42 @@ const ChatPageComponent: React.FC = () => {
         throw new Error('发送消息失败');
       }
 
-      const data = await response.json();
+      // 创建 AI 消息占位
+      const aiMessage: Message = {
+        id: `ai-${Date.now()}`,
+        content: '',
+        isUser: false,
+      };
 
-      // 更新消息列表，替换临时用户消息ID并添加AI回复
-      setMessagesMap(prevMap => {
-        const currentMessages = prevMap[actualConversationId] || [];
-        const updatedMessages = currentMessages.map(msg => 
-          msg.id === userMessage.id ? { ...msg, id: data.userMessageId } : msg
-        );
+      setMessagesMap(prevMap => ({
+        ...prevMap,
+        [actualConversationId]: [...(prevMap[actualConversationId] || []), aiMessage]
+      }));
 
-        return {
-          ...prevMap,
-          [actualConversationId]: [
-            ...updatedMessages,
-            {
-              id: data.messageId,
-              content: data.reply,
-              isUser: false
-            }
-          ]
-        };
-      });
+      // 处理流式响应
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+
+      while (reader) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        
+        const text = decoder.decode(value);
+        
+        // 更新 AI 消息内容
+        setMessagesMap(prevMap => {
+          const messages = prevMap[actualConversationId] || [];
+          const updatedMessages = messages.map(msg =>
+            msg.id === aiMessage.id 
+              ? { ...msg, content: msg.content + text } 
+              : msg
+          );
+          return {
+            ...prevMap,
+            [actualConversationId]: updatedMessages
+          };
+        });
+      }
 
     } catch (error) {
       console.error('Error:', error);

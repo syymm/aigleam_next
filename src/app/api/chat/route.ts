@@ -11,14 +11,12 @@ const openai = new OpenAI({
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-// 支持的文件扩展名（不区分大小写）
 const SUPPORTED_EXTENSIONS = {
   images: ['jpg', 'jpeg', 'png', 'gif', 'webp'],
   texts: ['txt', 'md', 'csv', 'json', 'js', 'html', 'css', 'xml', 'yaml', 'yml'],
   documents: ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'rtf']
 };
 
-// 支持的 MIME 类型
 const SUPPORTED_MIMES = {
   images: new Set([
     'image/jpeg',
@@ -88,7 +86,6 @@ export async function POST(request: Request) {
     const conversationId = formData.get('conversationId') as string;
     const file = formData.get('file') as File | null;
 
-    // 验证会话所有权
     const conversation = await prisma.conversation.findUnique({
       where: {
         id: conversationId,
@@ -105,7 +102,13 @@ export async function POST(request: Request) {
       content: message
     }];
 
-    let fileInfo = null;
+    let fileInfo: {
+      fileName: string;
+      fileType: string;
+      fileUrl?: string;
+      fileContent?: string;
+      fileId?: string;
+    } | null = null;
 
     if (file) {
       const bytes = await file.arrayBuffer();
@@ -187,7 +190,6 @@ export async function POST(request: Request) {
       }
     }
 
-    // 保存用户消息
     const userMessage = await prisma.message.create({
       data: {
         content: message,
@@ -201,35 +203,48 @@ export async function POST(request: Request) {
       }
     });
 
-    // 调用 OpenAI API
-    const completion = await openai.chat.completions.create({
+    const response = await openai.chat.completions.create({
       model: model,
       messages: messages,
+      stream: true,
       max_tokens: 2000,
     });
 
-    const reply = completion.choices[0]?.message?.content || '';
+    let fullResponse = '';
 
-    // 保存 AI 回复
-    const aiMessage = await prisma.message.create({
-      data: {
-        content: reply,
-        isUser: false,
-        conversationId
-      }
-    });
+    const streamResponse = new Response(
+      new ReadableStream({
+        async start(controller) {
+          for await (const chunk of response) {
+            const content = chunk.choices[0]?.delta?.content || '';
+            if (content) {
+              controller.enqueue(new TextEncoder().encode(content));
+              fullResponse += content;
+            }
+          }
+          
+          // 在流结束时保存完整的 AI 回复
+          await prisma.message.create({
+            data: {
+              content: fullResponse,
+              isUser: false,
+              conversationId
+            }
+          });
 
-    // 更新会话的最后更新时间
-    await prisma.conversation.update({
-      where: { id: conversationId },
-      data: { updatedAt: new Date() }
-    });
+          // 更新会话时间
+          await prisma.conversation.update({
+            where: { id: conversationId },
+            data: { updatedAt: new Date() }
+          });
 
-    return NextResponse.json({
-      reply,
-      messageId: aiMessage.id,
-      userMessageId: userMessage.id
-    });
+          controller.close();
+        }
+      })
+    );
+
+    return streamResponse;
+
   } catch (error) {
     console.error('OpenAI API error:', error);
     return NextResponse.json(
