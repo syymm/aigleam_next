@@ -125,14 +125,13 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
         {/* 输入区域 - 调整对齐 */}
         <Box sx={{ 
           display: 'flex', 
-          alignItems: 'flex-start', // 改为顶部对齐
+          alignItems: 'center', // 改为顶部对齐
         }}>
           <IconButton 
             onClick={handleAttachClick} 
             sx={{ 
               color: theme.palette.primary.main,
               padding: '8px',
-              mt: '6px', // 微调回形针图标位置
               '&:hover': { backgroundColor: 'transparent' }
             }}
           >
@@ -175,7 +174,6 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
             sx={{ 
               color: theme.palette.primary.main,
               padding: '8px',
-              mt: '6px', // 微调发送图标位置
               '&:hover': { backgroundColor: 'transparent' }
             }}
           >
