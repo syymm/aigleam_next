@@ -10,24 +10,7 @@ import WelcomeScreen from './components/WelcomeScreen/WelcomeScreen';
 import { useTheme } from '../contexts/ThemeContext';
 import styles from './styles/ChatPage.module.css';
 import { useRouter } from 'next/navigation';
-
-interface Message {
-  id: string;
-  content: string;
-  isUser: boolean;
-  fileInfo?: {
-    name: string;
-    type: string;
-    url?: string;
-  };
-}
-
-interface Conversation {
-  id: string;
-  title: string;
-  createdAt?: string;
-  messages?: Message[];
-}
+import { Message, Conversation } from './types';
 
 const drawerWidth = 240;
 
@@ -97,8 +80,8 @@ const ChatPageComponent: React.FC = () => {
     setMessagesMap(prevMap => ({...prevMap, [tempId]: []}));
   };
 
-  const handleSendMessage = async (content: string, file?: File) => {
-    if (!currentConversationId || !content.trim()) return;
+  const handleSendMessage = async (content: string, files?: File[]) => {
+    if (!currentConversationId || (!content.trim() && (!files || files.length === 0))) return;
     
     try {
       let actualConversationId = currentConversationId;
@@ -137,11 +120,11 @@ const ChatPageComponent: React.FC = () => {
         id: Date.now().toString(),
         content,
         isUser: true,
-        ...(file && {
-          fileInfo: {
+        ...(files && files.length > 0 && {
+          fileInfo: files.map(file => ({
             name: file.name,
             type: file.type,
-          }
+          }))
         })
       };
 
@@ -156,8 +139,10 @@ const ChatPageComponent: React.FC = () => {
       formData.append('message', content);
       formData.append('model', selectedModel);
       formData.append('conversationId', actualConversationId);
-      if (file) {
-        formData.append('file', file);
+      if (files && files.length > 0) {
+        files.forEach((file, index) => {
+          formData.append(`file${index}`, file);
+        });
       }
 
       const response = await fetch('/api/chat', {

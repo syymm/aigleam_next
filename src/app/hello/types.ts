@@ -1,21 +1,20 @@
-// src/app/hello/types.ts  (或者您的项目中types.ts的实际位置)
+// src/app/hello/types.ts
 
 // 消息接口
 export interface Message {
   id: string;
   content: string;
   isUser: boolean;
-  fileInfo?: {
-    name: string;
-    type: string;
-    url?: string;
-  };
+  fileName?: string;
+  fileType?: string;
+  fileUrl?: string;
 }
 
 // 对话接口
 export interface Conversation {
   id: string;
   title: string;
+  createdAt?: string;
 }
 
 // TopNav组件的Props接口
@@ -52,7 +51,7 @@ export interface ChatAreaProps {
 
 // InputArea组件的Props接口
 export interface InputAreaProps {
-  onSendMessage: (content: string, file?: File) => void;
+  onSendMessage: (content: string, files?: File[]) => void;
 }
 
 // WelcomeScreen组件的Props接口

@@ -1,21 +1,17 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Box, Paper, Typography, Popover, CircularProgress } from '@mui/material';
+import { Box, Typography, Popover, CircularProgress } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
-import { styled } from '@mui/material/styles';
 import FormatQuoteIcon from '@mui/icons-material/FormatQuote';
 import IconButton from '@mui/material/IconButton';
-import ThumbUpIcon from '@mui/icons-material/ThumbUp';
-import ThumbDownIcon from '@mui/icons-material/ThumbDown';
+import Message from './Message';
 
 interface Message {
   id: string;
   content: string;
   isUser: boolean;
-  fileInfo?: {
-    name: string;
-    type: string;
-    url?: string;
-  };
+  fileName?: string;
+  fileType?: string;
+  fileUrl?: string;
 }
 
 interface ChatAreaProps {
@@ -25,28 +21,6 @@ interface ChatAreaProps {
   onQuoteReply: (content: string) => void;
   isLoading?: boolean;
 }
-
-const MessagePaper = styled(Paper)(({ theme }) => ({
-  padding: theme.spacing(2),
-  marginBottom: theme.spacing(2),
-  maxWidth: '70%',
-  position: 'relative',
-  backgroundColor: theme.palette.mode === 'dark' 
-    ? theme.palette.grey[900] 
-    : theme.palette.grey[100],
-  wordWrap: 'break-word',
-  overflowWrap: 'break-word',
-  whiteSpace: 'pre-wrap',
-  '& .message-actions': {
-    visibility: 'hidden',
-    position: 'absolute',
-    right: theme.spacing(1),
-    top: theme.spacing(1),
-  },
-  '&:hover .message-actions': {
-    visibility: 'visible',
-  },
-}));
 
 const ChatArea: React.FC<ChatAreaProps> = ({ 
   messages,
@@ -82,64 +56,53 @@ const ChatArea: React.FC<ChatAreaProps> = ({
     setAnchorEl(null);
   };
 
-  const renderMessage = (message: Message) => {
+  const renderFileMessages = (mainMessage: Message, index: number) => {
+    const fileMessages: Message[] = [];
+    
+    // 从主消息后收集连续的文件消息
+    for (let i = index + 1; i < messages.length; i++) {
+      const msg = messages[i];
+      if (!msg.isUser || !msg.fileName) break;
+      fileMessages.push(msg);
+    }
+
     return (
-      <Box
-        key={message.id}
-        sx={{
-          display: 'flex',
-          justifyContent: message.isUser ? 'flex-end' : 'flex-start',
-          mb: 2,
-        }}
-      >
-        <MessagePaper elevation={1} onMouseUp={handleTextSelection}>
-          <Typography 
-            color="text.primary"
+      <Box key={mainMessage.id}>
+        <Message
+          content={mainMessage.content}
+          isUser={mainMessage.isUser}
+          onTextSelect={handleTextSelection}
+          onBestResponse={() => onBestResponse(mainMessage.id)}
+          onErrorResponse={() => onErrorResponse(mainMessage.id)}
+        />
+        {fileMessages.length > 0 && (
+          <Box
             sx={{
-              wordBreak: 'break-word',
-              overflowWrap: 'break-word',
-              maxWidth: '100%',
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: 1,
+              justifyContent: 'flex-end',
+              mb: 2,
             }}
           >
-            {message.content}
-          </Typography>
-          {message.fileInfo && (
-            <Box sx={{ mt: 1 }}>
-              <Typography variant="caption" color="text.secondary">
-                附件: {message.fileInfo.name}
-              </Typography>
-              {message.fileInfo.url && (
-                <Box component="img" 
-                  sx={{ 
-                    mt: 1, 
-                    maxWidth: '100%',
-                    maxHeight: '200px',
-                    borderRadius: 1 
-                  }}
-                  src={message.fileInfo.url}
-                  alt={message.fileInfo.name}
+            {fileMessages.map(fileMsg => (
+              <Box
+                key={fileMsg.id}
+                sx={{
+                  maxWidth: fileMsg.fileType?.startsWith('image/') ? '200px' : '300px',
+                }}
+              >
+                <Message
+                  content={fileMsg.content}
+                  isUser={true}
+                  fileName={fileMsg.fileName}
+                  fileType={fileMsg.fileType}
+                  fileUrl={fileMsg.fileUrl}
                 />
-              )}
-            </Box>
-          )}
-          {!message.isUser && (
-            <Box className="message-actions">
-              <IconButton 
-                size="small" 
-                onClick={() => onBestResponse(message.id)}
-                sx={{ mr: 1 }}
-              >
-                <ThumbUpIcon fontSize="small" />
-              </IconButton>
-              <IconButton 
-                size="small" 
-                onClick={() => onErrorResponse(message.id)}
-              >
-                <ThumbDownIcon fontSize="small" />
-              </IconButton>
-            </Box>
-          )}
-        </MessagePaper>
+              </Box>
+            ))}
+          </Box>
+        )}
       </Box>
     );
   };
@@ -169,7 +132,13 @@ const ChatArea: React.FC<ChatAreaProps> = ({
       },
     }}>
       <Box sx={{ width: '70%', maxWidth: '70%' }}>
-        {messages.map(renderMessage)}
+        {messages.map((message, index) => {
+          // 如果这是一个文件消息且不是第一条消息，跳过（因为它会在主消息中被渲染）
+          if (message.fileName && index > 0 && messages[index - 1].isUser) {
+            return null;
+          }
+          return renderFileMessages(message, index);
+        })}
         {isLoading && (
           <Box sx={{ display: 'flex', justifyContent: 'center', my: 2 }}>
             <CircularProgress size={24} />

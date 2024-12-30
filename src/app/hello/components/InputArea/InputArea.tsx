@@ -13,16 +13,16 @@ import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
 const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
   const { theme, themeMode } = useTheme();
   const [inputValue, setInputValue] = useState('');
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]); // 改为数组
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleSend = () => {
-    if (inputValue.trim() || selectedFile) {
-      onSendMessage(inputValue, selectedFile || undefined);
+    if (inputValue.trim() || selectedFiles.length > 0) {
+      onSendMessage(inputValue, selectedFiles); // 传递文件数组
       setInputValue('');
-      setSelectedFile(null);
+      setSelectedFiles([]);
       if (fileInputRef.current) {
-        fileInputRef.current.value = ''; // 清空文件输入
+        fileInputRef.current.value = '';
       }
     }
   };
@@ -36,13 +36,15 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
 
   const handleFileSelect = (event: ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files.length > 0) {
-      const file = event.target.files[0];
-      // 可以在这里添加文件类型和大小的验证
-      if (file.size > 10 * 1024 * 1024) { // 10MB 限制
-        alert('文件大小不能超过10MB');
-        return;
-      }
-      setSelectedFile(file);
+      const files = Array.from(event.target.files);
+      const validFiles = files.filter(file => {
+        if (file.size > 10 * 1024 * 1024) { // 10MB 限制
+          alert(`文件 ${file.name} 大小不能超过10MB`);
+          return false;
+        }
+        return true;
+      });
+      setSelectedFiles(prev => [...prev, ...validFiles]);
     }
   };
 
@@ -50,9 +52,13 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
     fileInputRef.current?.click();
   };
 
+  const handleRemoveFile = (index: number) => {
+    setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
   const getFileIcon = (fileType: string) => {
     const iconStyle = {
-      fontSize: '16px', // 设置更小的图标尺寸
+      fontSize: '16px',
       marginRight: '4px',
     };
 
@@ -85,50 +91,62 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
         boxShadow: '0 2px 10px rgba(0, 0, 0, 0.1)',
         border: `1px solid ${theme.palette.divider}`,
       }}>
-        {/* 文件预览区域 - 优化宽度和布局 */}
-        {selectedFile && (
+        {/* 文件预览区域 */}
+        {selectedFiles.length > 0 && (
           <Box sx={{ 
             display: 'flex',
-            alignItems: 'center',
-            gap: '4px', // 减小间距
+            flexWrap: 'wrap',
+            gap: '4px',
             padding: '4px 8px',
             marginBottom: '4px',
-            backgroundColor: theme.palette.action.hover,
-            borderRadius: '4px',
-            maxWidth: 'fit-content',
             ml: '40px',
           }}>
-            {getFileIcon(selectedFile.type)}
-            <span style={{ 
-              fontSize: '0.875rem',
-              maxWidth: '200px',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-            }}>
-              {selectedFile.name}
-            </span>
-            <IconButton
-              size="small"
-              onClick={() => setSelectedFile(null)}
-              sx={{ 
-                padding: '2px',
-                marginLeft: '2px', // 减小关闭按钮的左边距
-                '&:hover': { backgroundColor: 'rgba(0,0,0,0.04)' }
-              }}
-            >
-              <CloseIcon sx={{ fontSize: 14 }} />
-            </IconButton>
+            {selectedFiles.map((file, index) => (
+              <Box
+                key={`${file.name}-${index}`}
+                sx={{ 
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  padding: '4px 8px',
+                  backgroundColor: theme.palette.action.hover,
+                  borderRadius: '4px',
+                  maxWidth: 'fit-content',
+                }}
+              >
+                {getFileIcon(file.type)}
+                <span style={{ 
+                  fontSize: '0.875rem',
+                  maxWidth: '200px',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}>
+                  {file.name}
+                </span>
+                <IconButton
+                  size="small"
+                  onClick={() => handleRemoveFile(index)}
+                  sx={{ 
+                    padding: '2px',
+                    marginLeft: '2px',
+                    '&:hover': { backgroundColor: 'rgba(0,0,0,0.04)' }
+                  }}
+                >
+                  <CloseIcon sx={{ fontSize: 14 }} />
+                </IconButton>
+              </Box>
+            ))}
           </Box>
         )}
 
-        {/* 输入区域 - 调整对齐 */}
+        {/* 输入区域 */}
         <Box sx={{ 
           display: 'flex', 
-          alignItems: 'center', // 改为顶部对齐
+          alignItems: 'center',
         }}>
           <IconButton 
-            onClick={handleAttachClick} 
+            onClick={handleAttachClick}
             sx={{ 
               color: theme.palette.primary.main,
               padding: '8px',
@@ -150,7 +168,7 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
                 color: theme.palette.text.primary,
               },
             }}
-            placeholder={selectedFile ? "添加消息描述..." : "输入消息..."}
+            placeholder={selectedFiles.length > 0 ? "添加消息描述..." : "输入消息..."}
             multiline
             maxRows={5}
             sx={{
@@ -170,7 +188,7 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
           />
 
           <IconButton 
-            onClick={handleSend} 
+            onClick={handleSend}
             sx={{ 
               color: theme.palette.primary.main,
               padding: '8px',
@@ -188,6 +206,7 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
         onChange={handleFileSelect}
         style={{ display: 'none' }}
         accept="image/*,.pdf,.doc,.docx,.txt"
+        multiple
       />
     </Box>
   );
