@@ -96,7 +96,7 @@ export async function POST(request: Request) {
     const conversation = await prisma.conversation.findUnique({
       where: {
         id: conversationId,
-        userId: userId  // userId 已经是数字类型，无需 parseInt
+        userId: userId
       }
     });
 
@@ -109,17 +109,16 @@ export async function POST(request: Request) {
       content: message
     }];
 
-    let messageContent = message;
-    const imageUrls: { type: "image_url", image_url: { url: string } }[] = [];
-
     // 创建主消息
     const userMessage = await prisma.message.create({
       data: {
-        content: messageContent,
+        content: message,
         isUser: true,
         conversationId,
       }
     });
+
+    const imageUrls: { type: "image_url", image_url: { url: string } }[] = [];
 
     // 处理所有文件
     for (const file of files) {
@@ -140,7 +139,6 @@ export async function POST(request: Request) {
             }
           });
 
-          // 为图片创建单独的消息
           await prisma.message.create({
             data: {
               content: `已上传图片：${file.name}`,
@@ -151,22 +149,19 @@ export async function POST(request: Request) {
               fileUrl: imageUrl
             }
           });
-
-          messageContent += `\n[图片：${file.name}]`;
           break;
         }
         case 'text': {
           const textContent = buffer.toString('utf-8');
-          const fileMessage = `\n\n文件内容（${file.name}）：\n${textContent}`;
-          messageContent += fileMessage;
           
           await prisma.message.create({
             data: {
-              content: textContent,
+              content: `已上传文本文件：${file.name}`,
               isUser: true,
               conversationId,
               fileName: file.name,
-              fileType: file.type
+              fileType: file.type,
+              fileUrl: textContent
             }
           });
           break;
@@ -180,8 +175,6 @@ export async function POST(request: Request) {
               file: uploadFile,
               purpose: "assistants",
             });
-            const fileMessage = `\n\n已上传文档文件：${file.name}\n文件ID：${fileUpload.id}`;
-            messageContent += fileMessage;
 
             await prisma.message.create({
               data: {
@@ -189,13 +182,12 @@ export async function POST(request: Request) {
                 isUser: true,
                 conversationId,
                 fileName: file.name,
-                fileType: file.type
+                fileType: file.type,
+                fileUrl: fileUpload.id
               }
             });
           } catch (error) {
             console.error('File upload error:', error);
-            const errorMessage = `\n\n文档文件上传失败：${file.name}`;
-            messageContent += errorMessage;
             
             await prisma.message.create({
               data: {
@@ -210,9 +202,6 @@ export async function POST(request: Request) {
           break;
         }
         default: {
-          const unsupportedMessage = `\n\n不支持的文件类型：${file.name}`;
-          messageContent += unsupportedMessage;
-          
           await prisma.message.create({
             data: {
               content: `不支持的文件类型：${file.name}`,
@@ -226,25 +215,14 @@ export async function POST(request: Request) {
       }
     }
 
-    // 更新主消息的内容
-    await prisma.message.update({
-      where: { id: userMessage.id },
-      data: { content: messageContent }
-    });
-
     // 更新 OpenAI 消息
     if (imageUrls.length > 0) {
       messages = [{
         role: "user",
         content: [
-          { type: "text", text: messageContent },
+          { type: "text", text: message },
           ...imageUrls
         ]
-      }];
-    } else {
-      messages = [{
-        role: "user",
-        content: messageContent
       }];
     }
 
