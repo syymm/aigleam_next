@@ -19,6 +19,15 @@ export async function GET(
       },
       include: {
         messages: {
+          select: {
+            id: true,
+            content: true,
+            isUser: true,
+            fileName: true,
+            fileType: true,
+            fileUrl: true,
+            createdAt: true
+          },
           orderBy: { createdAt: 'asc' }
         }
       }

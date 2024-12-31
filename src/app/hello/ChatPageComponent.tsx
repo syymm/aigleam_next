@@ -120,17 +120,25 @@ const ChatPageComponent: React.FC = () => {
         id: Date.now().toString(),
         content,
         isUser: true,
-        ...(files && files.length > 0 && {
-          fileInfo: files.map(file => ({
-            name: file.name,
-            type: file.type,
-          }))
-        })
       };
 
+      // 如果有文件，为每个文件创建临时消息对象
+      const fileMessages = files?.map(file => ({
+        id: `file-${Date.now()}-${file.name}`,
+        content: `已上传文件：${file.name}`,
+        isUser: true,
+        fileName: file.name,
+        fileType: file.type
+      })) || [];
+
+      // 更新消息列表，包含主消息和文件消息
       setMessagesMap(prevMap => ({
         ...prevMap,
-        [actualConversationId]: [...(prevMap[actualConversationId] || []), userMessage]
+        [actualConversationId]: [
+          ...(prevMap[actualConversationId] || []),
+          userMessage,
+          ...fileMessages
+        ]
       }));
 
       setIsLoading(true);

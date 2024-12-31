@@ -110,12 +110,23 @@ const ChatArea: React.FC<ChatAreaProps> = ({
   };
 
   const renderMessage = (message: Message, index: number) => {
-    const nextMessage = messages[index + 1];
-    const isFileMessage = message.fileName && message.fileType;
-    const hasAttachedFile = !isFileMessage && nextMessage?.isUser && nextMessage?.fileName;
+    // 查找当前消息相关的文件消息（包括下一条和后续的文件消息）
+    const findRelatedFileMessages = () => {
+      const fileMessages: Message[] = [];
+      for (let i = index + 1; i < messages.length; i++) {
+        const nextMsg = messages[i];
+        if (!nextMsg.isUser || !nextMsg.fileName) break;
+        fileMessages.push(nextMsg);
+      }
+      return fileMessages;
+    };
 
+    const isFileMessage = message.fileName && message.fileType;
+    const relatedFileMessages = !isFileMessage ? findRelatedFileMessages() : [];
+    
+    // 如果是文件消息，且前一条是用户消息，则跳过（因为会在用户消息中显示）
     if (isFileMessage && index > 0 && messages[index - 1].isUser) {
-      return null; // Skip file messages that follow a user message
+      return null;
     }
 
     return (
@@ -136,7 +147,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({
                 wordBreak: 'break-word',
                 overflowWrap: 'break-word',
                 maxWidth: '100%',
-                mb: hasAttachedFile ? 1 : 0,
+                mb: relatedFileMessages.length > 0 ? 1 : 0,
               }}
             >
               {message.content}
@@ -144,30 +155,33 @@ const ChatArea: React.FC<ChatAreaProps> = ({
           )}
 
           {/* 文件预览 */}
-          {(isFileMessage || (hasAttachedFile && nextMessage)) && (
-            <FilePreview>
-              {(isFileMessage ? message : nextMessage)?.fileType?.startsWith('image/') && 
-               (isFileMessage ? message : nextMessage)?.fileUrl ? (
-                <Box 
-                  component="img" 
-                  src={(isFileMessage ? message : nextMessage)?.fileUrl}
-                  alt={(isFileMessage ? message : nextMessage)?.fileName}
-                  sx={{ 
-                    maxWidth: '200px',
-                    maxHeight: '200px',
-                    borderRadius: 1,
-                    objectFit: 'contain'
-                  }}
-                />
-              ) : (
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  {getFileIcon((isFileMessage ? message : nextMessage)?.fileType)}
-                  <Typography>
-                    {(isFileMessage ? message : nextMessage)?.fileName}
-                  </Typography>
-                </Box>
-              )}
-            </FilePreview>
+          {(isFileMessage || relatedFileMessages.length > 0) && (
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+              {(isFileMessage ? [message] : relatedFileMessages).map((fileMsg, fileIndex) => (
+                <FilePreview key={fileMsg.id}>
+                  {fileMsg.fileType?.startsWith('image/') && fileMsg.fileUrl ? (
+                    <Box 
+                      component="img" 
+                      src={fileMsg.fileUrl}
+                      alt={fileMsg.fileName}
+                      sx={{ 
+                        maxWidth: '200px',
+                        maxHeight: '200px',
+                        borderRadius: 1,
+                        objectFit: 'contain'
+                      }}
+                    />
+                  ) : (
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      {getFileIcon(fileMsg.fileType)}
+                      <Typography>
+                        {fileMsg.fileName}
+                      </Typography>
+                    </Box>
+                  )}
+                </FilePreview>
+              ))}
+            </Box>
           )}
 
           {/* AI 消息的操作按钮 */}
