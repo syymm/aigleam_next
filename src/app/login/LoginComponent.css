@@ -2,7 +2,7 @@
   display: flex;
   width: 70%;
   max-width: 960px;
-  height: 520px; /* 增加高度以适应更大的内部间距 */
+  height: 520px;
   margin: auto;
   border-radius: 8px;
   overflow: hidden;
@@ -11,11 +11,12 @@
 
 .login-form {
   flex: 1.5;
-  padding: 60px; /* 增加内边距 */
+  padding: 60px;
   display: flex;
   flex-direction: column;
   justify-content: center;
   background-image: linear-gradient(to bottom right, #FFFFFF, #A9A9E6);
+  color: #000000;
 }
 
 .login-image {
@@ -30,7 +31,7 @@
 
 .login-image img {
   object-fit: cover;
-  object-position: center calc(50%); /* 调整这个值来改变视点 */
+  object-position: center calc(50%);
 }
 
 @font-face {
@@ -43,15 +44,9 @@
 .login-form h1 {
   font-family: "Playwrite US Modern", cursive;
   font-optical-sizing: auto;
-  margin-bottom: 3rem; /* 增加标题下的间距 */
+  margin-bottom: 3rem;
+  color: #000000;
 }
-
-/*
-.login-form .MuiOutlinedInput-root {
-  background-color: white; 
-  border-radius: 4px; 
-}
-*/
 
 .login-form form {
   display: flex;
@@ -59,29 +54,24 @@
 }
 
 .login-form button {
-  padding: 15px; /* 增加按钮的填充 */
+  padding: 15px;
   background-color: #6200ea;
   color: white;
   border: none;
   border-radius: 4px;
   cursor: pointer;
-  margin-top: 2rem; /* 为按钮增加上边距 */
+  margin-top: 2rem;
 }
 
 ::-ms-reveal {
-  display: none
+  display: none;
 }
-
-
-/* .MuiTextField-root {
-  border-radius: 4px;
-} */
 
 .MuiIconButton-root {
   border-radius: 50%; 
   padding: 0; 
   background-color: transparent;
-  margin: 0; /* Remove any default margin */
+  margin: 0;
 }
 
 .login-form a {
@@ -90,20 +80,36 @@
 }
 
 .login-form p {
-  margin-top: 2rem; /* 增加段落的上边距 */
+  margin-top: 2rem;
+  color: #000000;
 }
 
 .credentials-actions {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  color: #000000;
 }
 
 .remember-me {
   display: flex;
   align-items: center;
+  color: #000000;
 }
 
 .forgot-password {
   text-decoration: none;
+  color: #6200ea;
+}
+
+.login-form a:hover {
+  color: #6200ea;
+}
+
+.login-form p a {
+  color: #6200ea;
+}
+
+.MuiAlert-message {
+  color: inherit;
 }
