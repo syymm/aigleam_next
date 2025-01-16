@@ -1,30 +1,43 @@
 import React from 'react';
-import { IconButton, Tooltip } from '@mui/material';
+import { IconButton } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
+import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
+import ChevronRightIcon from '@mui/icons-material/ChevronRight';
+import { styled, useTheme } from '@mui/material/styles';
+
+const DrawerHeader = styled('div')(({ theme }) => ({
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  padding: theme.spacing(0, 1),
+  ...theme.mixins.toolbar,
+}));
 
 interface SidebarHeaderProps {
   onNewConversation: () => void;
+  onDrawerClose: () => void;
+  isLoading?: boolean;
 }
 
-const SidebarHeader: React.FC<SidebarHeaderProps> = ({ onNewConversation }) => {
+const SidebarHeader: React.FC<SidebarHeaderProps> = ({ 
+  onNewConversation, 
+  onDrawerClose,
+  isLoading = false 
+}) => {
+  const theme = useTheme();
+
   return (
-    <Tooltip title="新建聊天" placement="right">
+    <DrawerHeader>
       <IconButton
-        color="primary"
         onClick={onNewConversation}
-        size="large"
-        sx={{
-          padding: '20px',
-          width: '40px',    // 设置固定宽度
-          height: '40px',   // 设置固定高度 
-          '& .MuiSvgIcon-root': {
-            fontSize: '2rem'
-          }
-        }}
+        disabled={isLoading}
       >
         <AddIcon />
       </IconButton>
-    </Tooltip>
+      <IconButton onClick={onDrawerClose}>
+        {theme.direction === 'ltr' ? <ChevronLeftIcon /> : <ChevronRightIcon />}
+      </IconButton>
+    </DrawerHeader>
   );
 };
 

@@ -15,21 +15,11 @@ import {
   Menu,
   MenuItem
 } from '@mui/material';
-import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
-import ChevronRightIcon from '@mui/icons-material/ChevronRight';
-import AddIcon from '@mui/icons-material/Add';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import RenameDialog from '../Dialogs/RenameDialog';
+import SidebarHeader from './SidebarHeader';
 
 const drawerWidth = 240;
-
-const DrawerHeader = styled('div')(({ theme }) => ({
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'space-between',
-  padding: theme.spacing(0, 1),
-  ...theme.mixins.toolbar,
-}));
 
 interface Conversation {
   id: string;
@@ -156,19 +146,12 @@ const Sidebar: React.FC<SidebarProps> = ({
       anchor="left"
       open={open}
     >
-      <DrawerHeader>
-        <IconButton
-          onClick={handleStartNewChat}
-          disabled={isLoading}
-          sx={{ p: '12px' }}
-        >
-          <AddIcon />
-        </IconButton>
-        <IconButton onClick={handleDrawerClose}>
-          {theme.direction === 'ltr' ? <ChevronLeftIcon /> : <ChevronRightIcon />}
-        </IconButton>
-      </DrawerHeader>
-
+      <SidebarHeader 
+        onNewConversation={handleStartNewChat}
+        onDrawerClose={handleDrawerClose}
+        isLoading={isLoading}
+      />
+      
       <Divider />
 
       <List sx={{ overflow: 'auto' }}>
