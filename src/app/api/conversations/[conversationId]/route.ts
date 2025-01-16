@@ -12,10 +12,10 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const conversation = await prisma.conversation.findUnique({
+    const conversation = await prisma.conversation.findFirst({
       where: {
         id: params.conversationId,
-        userId,
+        userId: userId,
       },
       include: {
         messages: {
@@ -44,32 +44,6 @@ export async function GET(
   }
 }
 
-export async function PUT(
-  request: Request,
-  { params }: { params: { conversationId: string } }
-) {
-  try {
-    const userId = await getCurrentUserId();
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const { title } = await request.json();
-    const conversation = await prisma.conversation.update({
-      where: {
-        id: params.conversationId,
-        userId,
-      },
-      data: { title }
-    });
-
-    return NextResponse.json(conversation);
-  } catch (error) {
-    console.error('Error:', error);
-    return NextResponse.json({ error: '更新会话失败' }, { status: 500 });
-  }
-}
-
 export async function DELETE(
   request: Request,
   { params }: { params: { conversationId: string } }
@@ -80,10 +54,24 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // 先验证会话存在并属于当前用户
+    const existingConversation = await prisma.conversation.findFirst({
+      where: {
+        id: params.conversationId,
+        userId: userId,
+      },
+    });
+
+    if (!existingConversation) {
+      return NextResponse.json(
+        { error: '会话不存在或无权访问' },
+        { status: 404 }
+      );
+    }
+
     await prisma.conversation.delete({
       where: {
         id: params.conversationId,
-        userId,
       }
     });
 

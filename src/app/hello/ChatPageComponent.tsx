@@ -48,28 +48,28 @@ const ChatPageComponent: React.FC = () => {
   const router = useRouter();
 
   useEffect(() => {
-    const loadConversations = async () => {
-      try {
-        const response = await fetch('/api/conversations');
-        if (response.status === 401) {
-          router.push('/login');
-          return;
-        }
-        if (response.ok) {
-          const data = await response.json();
-          const sortedData = data.sort((a: Conversation, b: Conversation) => {
-            return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
-          });
-          setConversations(sortedData);
-          handleStartNewChat();
-        }
-      } catch (error) {
-        console.error('加载会话失败:', error);
-      }
-    };
-
     loadConversations();
-  }, [router]);
+  }, []);
+
+  const loadConversations = async () => {
+    try {
+      const response = await fetch('/api/conversations');
+      if (response.status === 401) {
+        router.push('/login');
+        return;
+      }
+      if (response.ok) {
+        const data = await response.json();
+        const sortedData = data.sort((a: Conversation, b: Conversation) => {
+          return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+        });
+        setConversations(sortedData);
+        handleStartNewChat();
+      }
+    } catch (error) {
+      console.error('加载会话失败:', error);
+    }
+  };
 
   const handleDrawerOpen = () => setOpen(true);
   const handleDrawerClose = () => setOpen(false);
@@ -115,14 +115,12 @@ const ChatPageComponent: React.FC = () => {
         ]);
       }
 
-      // 立即显示用户消息
       const userMessage: Message = {
         id: Date.now().toString(),
         content,
         isUser: true,
       };
 
-      // 如果有文件，为每个文件创建临时消息对象
       const fileMessages = files?.map(file => ({
         id: `file-${Date.now()}-${file.name}`,
         content: `已上传文件：${file.name}`,
@@ -131,7 +129,6 @@ const ChatPageComponent: React.FC = () => {
         fileType: file.type
       })) || [];
 
-      // 更新消息列表，包含主消息和文件消息
       setMessagesMap(prevMap => ({
         ...prevMap,
         [actualConversationId]: [
@@ -162,7 +159,6 @@ const ChatPageComponent: React.FC = () => {
         throw new Error('发送消息失败');
       }
 
-      // 创建 AI 消息占位
       const aiMessage: Message = {
         id: `ai-${Date.now()}`,
         content: '',
@@ -174,7 +170,6 @@ const ChatPageComponent: React.FC = () => {
         [actualConversationId]: [...(prevMap[actualConversationId] || []), aiMessage]
       }));
 
-      // 处理流式响应
       const reader = response.body?.getReader();
       const decoder = new TextDecoder();
 
@@ -184,7 +179,6 @@ const ChatPageComponent: React.FC = () => {
         
         const text = decoder.decode(value);
         
-        // 更新 AI 消息内容
         setMessagesMap(prevMap => {
           const messages = prevMap[actualConversationId] || [];
           const updatedMessages = messages.map(msg =>
@@ -207,28 +201,52 @@ const ChatPageComponent: React.FC = () => {
   };
 
   const handleRenameConversation = async (conversationId: string, newTitle: string) => {
+    console.log('Starting rename operation:', { conversationId, newTitle });
+    
     if (conversationId.startsWith('temp-')) {
+      console.log('Handling temp conversation rename');
+      setConversations(prevConversations =>
+        prevConversations.map(conv =>
+          conv.id === conversationId ? { ...conv, title: newTitle } : conv
+        )
+      );
       return;
     }
-
+  
     try {
-      const response = await fetch(`/api/conversations/${conversationId}`, {
-        method: 'PUT',
+      console.log('Sending rename request to server');
+      const response = await fetch('/api/conversations/rename', {
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ title: newTitle }),
+        body: JSON.stringify({
+          conversationId,
+          title: newTitle
+        }),
       });
-
-      if (response.ok) {
-        setConversations(prevConversations =>
-          prevConversations.map(conv =>
-            conv.id === conversationId ? { ...conv, title: newTitle } : conv
-          )
-        );
+  
+      console.log('Rename response:', {
+        status: response.status,
+        ok: response.ok
+      });
+  
+      const data = await response.json();
+      console.log('Response data:', data);
+  
+      if (!response.ok) {
+        throw new Error(data.error || '重命名失败');
       }
+  
+      // 更新本地状态
+      setConversations(prevConversations =>
+        prevConversations.map(conv =>
+          conv.id === conversationId ? { ...conv, title: newTitle } : conv
+        )
+      );
     } catch (error) {
-      console.error('重命名会话失败:', error);
+      console.error('重命名失败:', error);
+      throw error;
     }
   };
 
@@ -265,6 +283,7 @@ const ChatPageComponent: React.FC = () => {
       }
     } catch (error) {
       console.error('删除会话失败:', error);
+      throw error;
     }
   };
 
@@ -286,6 +305,7 @@ const ChatPageComponent: React.FC = () => {
       }
     } catch (error) {
       console.error('切换会话失败:', error);
+      throw error;
     }
   };
 
