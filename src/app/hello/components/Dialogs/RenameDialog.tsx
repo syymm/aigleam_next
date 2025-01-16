@@ -24,17 +24,17 @@ const RenameDialog: React.FC<RenameDialogProps> = ({
   onRename, 
   currentName 
 }) => {
-  const [newName, setNewName] = useState(currentName);
+  const [newName, setNewName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Reset state when dialog opens
   useEffect(() => {
     if (isOpen) {
-      setNewName(currentName);
+      setNewName('');
       setError(null);
     }
-  }, [isOpen, currentName]);
+  }, [isOpen]);
 
   const handleRename = async () => {
     console.log('RenameDialog handleRename called');
@@ -66,7 +66,7 @@ const RenameDialog: React.FC<RenameDialogProps> = ({
   };
 
   const handleKeyPress = (event: React.KeyboardEvent) => {
-    if (event.key === 'Enter' && !isLoading) {
+    if (event.key === 'Enter' && !isLoading && newName.trim()) {
       handleRename();
     }
   };
@@ -91,15 +91,37 @@ const RenameDialog: React.FC<RenameDialogProps> = ({
             autoFocus
             margin="dense"
             label="新名称"
+            placeholder={currentName}
             type="text"
             fullWidth
+            autoComplete="off"
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
             onKeyPress={handleKeyPress}
             error={Boolean(error)}
             helperText={error}
             disabled={isLoading}
-            sx={{ mt: 1 }}
+            sx={{ 
+              mt: 1,
+              '& .MuiInputBase-input': {
+                backgroundColor: 'rgba(0, 0, 0, 0.04)',
+              },
+              '& .MuiInputBase-input:focus': {
+                backgroundColor: 'rgba(0, 0, 0, 0.04)',
+              },
+              '& .MuiOutlinedInput-root': {
+                '&.Mui-focused fieldset': {
+                  backgroundColor: 'rgba(0, 0, 0, 0.04)',
+                },
+                '& fieldset': {
+                  backgroundColor: 'rgba(0, 0, 0, 0.04)',
+                },
+                '& input:-webkit-autofill': {
+                  '-webkit-box-shadow': '0 0 0 100px rgba(0, 0, 0, 0.04) inset',
+                  '-webkit-text-fill-color': 'inherit'
+                }
+              }
+            }}
           />
         </DialogContent>
         <DialogActions>
