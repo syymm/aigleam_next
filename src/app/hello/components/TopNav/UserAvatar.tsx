@@ -15,6 +15,7 @@ import LogoutButton from '../Auth/LogoutButton';
 import UpgradeButton from '../Account/UpgradeButton';
 import DarkModeIcon from '@mui/icons-material/DarkMode';
 import LightModeIcon from '@mui/icons-material/LightMode';
+import CustomizeAIDialog, { AISettings } from '../Dialogs/CustomizeAIDialog';
 
 interface UserAvatarProps {
   onThemeToggle: () => void;
@@ -49,6 +50,13 @@ const UserAvatar: React.FC<UserAvatarProps> = ({ onThemeToggle, onUpgrade, isDar
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [isCustomizeAIOpen, setIsCustomizeAIOpen] = useState(false);
+  const [aiSettings, setAISettings] = useState<AISettings>({
+    name: '',
+    role: '',
+    traits: [],
+    additionalInfo: ''
+  });
 
   const handleClick = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
@@ -89,6 +97,25 @@ const UserAvatar: React.FC<UserAvatarProps> = ({ onThemeToggle, onUpgrade, isDar
     }
   };
 
+  const handleCustomizeAI = async (settings: AISettings) => {
+    try {
+      const response = await fetch('/api/customize-ai', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(settings),
+      });
+
+      if (response.ok) {
+        setAISettings(settings);
+        handleClose();
+      }
+    } catch (error) {
+      console.error('自定义AI失败:', error);
+    }
+  };
+
   return (
     <>
       <AvatarWrapper>
@@ -109,6 +136,12 @@ const UserAvatar: React.FC<UserAvatarProps> = ({ onThemeToggle, onUpgrade, isDar
         onClose={handleClose}
       >
         <UpgradeButton onUpgrade={onUpgrade} />
+        <MenuItem onClick={() => setIsCustomizeAIOpen(true)}>
+          <ListItemIcon>
+            <EditIcon />
+          </ListItemIcon>
+          <ListItemText primary="自定义AI" />
+        </MenuItem>
         <MenuItem onClick={onThemeToggle}>
           <ListItemIcon>
             {isDarkMode ? <LightModeIcon /> : <DarkModeIcon />}
@@ -122,6 +155,13 @@ const UserAvatar: React.FC<UserAvatarProps> = ({ onThemeToggle, onUpgrade, isDar
         open={isEditDialogOpen}
         onClose={() => setIsEditDialogOpen(false)}
         onSave={handleAvatarSave}
+      />
+
+      <CustomizeAIDialog
+        open={isCustomizeAIOpen}
+        onClose={() => setIsCustomizeAIOpen(false)}
+        onSave={handleCustomizeAI}
+        initialSettings={aiSettings}
       />
     </>
   );
