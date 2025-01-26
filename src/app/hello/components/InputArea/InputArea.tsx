@@ -1,14 +1,32 @@
-import React, { useState, KeyboardEvent, useRef, ChangeEvent, DragEvent } from 'react';
-import { TextField, IconButton, Box } from '@mui/material';
+import React, { useState, useRef, ChangeEvent } from 'react';
+import { 
+  TextField, 
+  IconButton, 
+  Box, 
+  Dialog, 
+  DialogTitle, 
+  DialogContent, 
+  DialogActions, 
+  List, 
+  ListItem, 
+  ListItemText, 
+  Button 
+} from '@mui/material';
 import SendIcon from '@mui/icons-material/Send';
 import AttachFileIcon from '@mui/icons-material/AttachFile';
 import { useTheme } from '../../../contexts/ThemeContext';
-import styles from '../../styles/ChatPage.module.css';
 import { InputAreaProps } from '../../types';
 import CloseIcon from '@mui/icons-material/Close';
 import ImageIcon from '@mui/icons-material/Image';
 import DescriptionIcon from '@mui/icons-material/Description';
 import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
+import MagicWandIcon from '@mui/icons-material/AutoFixHigh';
+import { usePromptContext } from '../Dialogs/CustomizeAIDialog';
+
+interface Prompt {
+  name: string;
+  content: string;
+}
 
 const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
   const { theme } = useTheme();
@@ -17,6 +35,8 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dragCounter = useRef(0);
+  const [isPromptSelectionOpen, setIsPromptSelectionOpen] = useState(false);
+  const prompts = usePromptContext();
 
   const handleSend = () => {
     if (inputValue.trim() || selectedFiles.length > 0) {
@@ -29,7 +49,7 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
     }
   };
 
-  const handleKeyPress = (event: KeyboardEvent<HTMLDivElement>) => {
+  const handleKeyPress = (event: React.KeyboardEvent<HTMLDivElement>) => {
     if (event.key === 'Enter' && !event.shiftKey) {
       event.preventDefault();
       handleSend();
@@ -54,14 +74,14 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
     });
   };
 
-  const handleDragEnter = (event: DragEvent<HTMLDivElement>) => {
+  const handleDragEnter = (event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault();
     event.stopPropagation();
     dragCounter.current++;
     setIsDragging(true);
   };
 
-  const handleDragLeave = (event: DragEvent<HTMLDivElement>) => {
+  const handleDragLeave = (event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault();
     event.stopPropagation();
     dragCounter.current--;
@@ -70,12 +90,12 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
     }
   };
 
-  const handleDragOver = (event: DragEvent<HTMLDivElement>) => {
+  const handleDragOver = (event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault();
     event.stopPropagation();
   };
 
-  const handleDrop = (event: DragEvent<HTMLDivElement>) => {
+  const handleDrop = (event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault();
     event.stopPropagation();
     setIsDragging(false);
@@ -110,6 +130,15 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
       return <InsertDriveFileIcon sx={{ ...iconStyle, color: '#2196F3' }} />;
     }
     return <InsertDriveFileIcon sx={{ ...iconStyle, color: '#757575' }} />;
+  };
+
+  const handleMagicWandClick = () => {
+    setIsPromptSelectionOpen(true);
+  };
+
+  const handlePromptSelect = (selectedPrompt: Prompt) => {
+    console.log('Selected prompt:', selectedPrompt);
+    setIsPromptSelectionOpen(false);
   };
 
   return (
@@ -240,6 +269,17 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
             <AttachFileIcon />
           </IconButton>
 
+          <IconButton 
+            onClick={handleMagicWandClick}
+            sx={{ 
+              color: theme.palette.primary.main,
+              padding: '8px',
+              '&:hover': { backgroundColor: 'transparent' }
+            }}
+          >
+            <MagicWandIcon />
+          </IconButton>
+
           <TextField
             fullWidth
             variant="standard"
@@ -292,8 +332,44 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
         accept="image/*,.pdf,.doc,.docx,.txt"
         multiple
       />
+
+      {isPromptSelectionOpen && (
+        <PromptSelectionDialog
+          open={isPromptSelectionOpen}
+          onClose={() => setIsPromptSelectionOpen(false)}
+          onSelect={handlePromptSelect}
+          prompts={prompts}
+        />
+      )}
     </Box>
   );
 };
 
 export default InputArea;
+
+interface PromptSelectionDialogProps {
+  open: boolean;
+  onClose: () => void;
+  onSelect: (prompt: Prompt) => void;
+  prompts: Prompt[];
+}
+
+const PromptSelectionDialog: React.FC<PromptSelectionDialogProps> = ({ open, onClose, onSelect, prompts }) => {
+  return (
+    <Dialog open={open} onClose={onClose}>
+      <DialogTitle>选择提示词</DialogTitle>
+      <DialogContent>
+        <List>
+          {prompts.map((prompt, index) => (
+            <ListItem button key={index} onClick={() => onSelect(prompt)}>
+              <ListItemText primary={prompt.name} />
+            </ListItem>
+          ))}
+        </List>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onClose}>取消</Button>
+      </DialogActions>
+    </Dialog>
+  );
+};

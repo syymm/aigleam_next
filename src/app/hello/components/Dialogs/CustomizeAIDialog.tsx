@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import type React from "react"
+import { useState, useEffect, createContext, useContext } from "react"
 import {
   Dialog,
   DialogTitle,
@@ -8,197 +9,165 @@ import {
   TextField,
   Chip,
   Stack,
-  InputLabel,
   Box,
-  Typography
-} from '@mui/material';
-import { Autorenew } from '@mui/icons-material';
+  IconButton,
+  InputAdornment,
+} from "@mui/material"
+import SearchIcon from "@mui/icons-material/Search"
 
-export interface AISettings {
-  name: string;
-  role: string;
-  traits: string[];
-  additionalInfo: string;
+interface Prompt {
+  name: string
+  content: string
 }
 
-interface CustomizeAIDialogProps {
-  open: boolean;
-  onClose: () => void;
-  onSave: (settings: AISettings) => void;
-  initialSettings: AISettings;
+interface CustomPromptLibraryProps {
+  open: boolean
+  onClose: () => void
+  onSave: (prompts: Prompt[]) => void
+  initialPrompts: Prompt[]
 }
 
-const ALL_TRAITS = [
-  '健谈', '友善', '有主见', '直言不讳', 'Z 世代', '敏锐性', '怀疑', '富有共鸣',
-  '幽默', '严谨', '创新', '耐心', '活力', '专注', '理性', '感性', '务实',
-  '浪漫', '谨慎', '大胆', '细心', '随性', '乐观', '稳重'
-];
+// 创建一个上下文来存储提示词
+const PromptContext = createContext<Prompt[]>([])
 
-const getRandomTraits = () => {
-  const shuffled = [...ALL_TRAITS].sort(() => 0.5 - Math.random());
-  return shuffled.slice(0, 8); // 随机返回8个特征
-};
+export const usePromptContext = () => useContext(PromptContext)
 
-const CustomizeAIDialog: React.FC<CustomizeAIDialogProps> = ({
-  open,
-  onClose,
-  onSave,
-  initialSettings
-}) => {
-  const [settings, setSettings] = useState<AISettings>(initialSettings);
-  const [presetTraits, setPresetTraits] = useState(ALL_TRAITS.slice(0, 8));
-  const [traitsInput, setTraitsInput] = useState('');
-  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
-  const [hasChanges, setHasChanges] = useState(false);
+const CustomPromptLibrary: React.FC<CustomPromptLibraryProps> = ({ open, onClose, onSave, initialPrompts }) => {
+  const [prompts, setPrompts] = useState<Prompt[]>(initialPrompts)
+  const [nameInput, setNameInput] = useState("")
+  const [contentInput, setContentInput] = useState("")
+  const [editingIndex, setEditingIndex] = useState<number | null>(null)
+  const [searchTerm, setSearchTerm] = useState("")
 
   useEffect(() => {
     if (open) {
-      setSettings(initialSettings);
-      setTraitsInput(initialSettings.traits.join('、'));
+      setPrompts(initialPrompts)
     }
-  }, [open, initialSettings]);
+  }, [open, initialPrompts])
 
-  const handleTraitToggle = (trait: string) => {
-    const newTraits = settings.traits.includes(trait)
-      ? settings.traits.filter(t => t !== trait)
-      : [...settings.traits, trait];
-    
-    setSettings(prev => ({
-      ...prev,
-      traits: newTraits
-    }));
-    setTraitsInput(newTraits.join('、'));
-  };
+  const handleAddPrompt = () => {
+    if (nameInput.trim() && contentInput.trim()) {
+      setPrompts((prev) => [...prev, { name: nameInput.trim(), content: contentInput.trim() }])
+      setNameInput("")
+      setContentInput("")
+    }
+  }
 
-  const handleTraitsInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setTraitsInput(e.target.value);
-    // 将输入框中的文本按顿号或逗号分割成数组
-    const newTraits = e.target.value.split(/[、,，]/).filter(t => t.trim());
-    setSettings(prev => ({
-      ...prev,
-      traits: newTraits
-    }));
-  };
+  const handleEditPrompt = (index: number) => {
+    setEditingIndex(index)
+    setNameInput(prompts[index].name)
+    setContentInput(prompts[index].content)
+  }
 
-  const handleRandomizeTraits = () => {
-    setPresetTraits(getRandomTraits());
-  };
+  const handlePromptSave = () => {
+    if (editingIndex !== null) {
+      const newPrompts = [...prompts]
+      newPrompts[editingIndex] = { name: nameInput, content: contentInput }
+      setPrompts(newPrompts)
+      setEditingIndex(null)
+      setNameInput("")
+      setContentInput("")
+    }
+  }
+
+  const handleDeletePrompt = (index: number) => {
+    const newPrompts = prompts.filter((_, i) => i !== index)
+    setPrompts(newPrompts)
+  }
 
   const handleSave = () => {
-    onSave(settings);
-    setHasChanges(false);
-    onClose();
-  };
+    onSave(prompts)
+    onClose()
+  }
 
-  const handleCloseRequest = () => {
-    if (hasChanges) {
-      setShowConfirmDialog(true);
-    } else {
-      setSettings(initialSettings);
-      onClose();
-    }
-  };
-
-  const handleConfirmClose = () => {
-    setShowConfirmDialog(false);
-    setSettings(initialSettings);
-    onClose();
-  };
-
-  const handleSettingsChange = (newSettings: Partial<AISettings>) => {
-    setSettings(prev => ({ ...prev, ...newSettings }));
-    setHasChanges(true);
-  };
+  const filteredPrompts = prompts.filter((prompt) => prompt.name.toLowerCase().includes(searchTerm.toLowerCase()))
 
   return (
-    <>
-      <Dialog open={open} onClose={handleCloseRequest} maxWidth="sm" fullWidth>
-        <DialogTitle>自定义 ChatGPT</DialogTitle>
+    <PromptContext.Provider value={prompts}>
+      <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+        <DialogTitle>我的提示词库</DialogTitle>
         <DialogContent>
           <Stack spacing={3} sx={{ mt: 2 }}>
             <TextField
               fullWidth
-              label="ChatGPT 应该怎么称呼您?"
-              value={settings.name}
-              onChange={(e) => handleSettingsChange({ name: e.target.value })}
+              label="搜索提示词"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon />
+                  </InputAdornment>
+                ),
+              }}
             />
-            
+            <TextField fullWidth label="提示词名称" value={nameInput} onChange={(e) => setNameInput(e.target.value)} />
             <TextField
               fullWidth
-              label="您是做什么的?"
-              value={settings.role}
-              onChange={(e) => handleSettingsChange({ role: e.target.value })}
-            />
-
-            <Box>
-              <InputLabel sx={{ mb: 1 }}>ChatGPT 应该具备哪些特征？</InputLabel>
-              <Stack spacing={2}>
-                <TextField
-                  fullWidth
-                  label="性格特征"
-                  value={traitsInput}
-                  onChange={handleTraitsInputChange}
-                  helperText="可以直接输入或编辑，用顿号、逗号分隔"
-                />
-                <Stack direction="row" spacing={1} flexWrap="wrap" gap={1}>
-                  {presetTraits.map((trait) => (
-                    <Chip
-                      key={trait}
-                      label={trait}
-                      onClick={() => handleTraitToggle(trait)}
-                      color={settings.traits.includes(trait) ? "primary" : "default"}
-                      clickable
-                    />
-                  ))}
-                  <Chip
-                    icon={<Autorenew />}
-                    label="换一批"
-                    onClick={handleRandomizeTraits}
-                    variant="outlined"
-                    clickable
-                  />
-                </Stack>
-              </Stack>
-            </Box>
-
-            <TextField
-              fullWidth
+              label="提示词内容"
+              value={contentInput}
+              onChange={(e) => setContentInput(e.target.value)}
               multiline
               rows={4}
-              label="ChatGPT 还需要了解您的其他信息吗?"
-              value={settings.additionalInfo}
-              onChange={(e) => handleSettingsChange({ additionalInfo: e.target.value })}
             />
+            <Button onClick={handleAddPrompt} variant="contained">
+              添加提示词
+            </Button>
+            <Box>
+              <Stack direction="row" spacing={1} flexWrap="wrap" gap={1}>
+                {filteredPrompts.map((prompt, index) => (
+                  <Chip
+                    key={index}
+                    label={prompt.name}
+                    onClick={() => handleEditPrompt(index)}
+                    onDelete={() => handleDeletePrompt(index)}
+                    deleteIcon={<span style={{ fontSize: "1.2rem" }}>×</span>}
+                    clickable
+                  />
+                ))}
+              </Stack>
+            </Box>
           </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleCloseRequest}>取消</Button>
-          <Button onClick={handleSave} variant="contained">保存</Button>
-        </DialogActions>
-      </Dialog>
-
-      <Dialog
-        open={showConfirmDialog}
-        onClose={() => setShowConfirmDialog(false)}
-        maxWidth="xs"
-        fullWidth
-      >
-        <DialogContent>
-          <Typography>您有未保存的更改。</Typography>
-          <Typography>确定要退出吗？您所做的全部更改都将永久丢失。</Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setShowConfirmDialog(false)}>返回</Button>
-          <Button 
-            onClick={handleConfirmClose}
-            color="error"
-          >
-            退出
+          <Button onClick={onClose}>取消</Button>
+          <Button onClick={handleSave} variant="contained">
+            保存
           </Button>
         </DialogActions>
-      </Dialog>
-    </>
-  );
-};
 
-export default CustomizeAIDialog; 
+        {editingIndex !== null && (
+          <Dialog open={true} onClose={() => setEditingIndex(null)}>
+            <DialogTitle>编辑提示词</DialogTitle>
+            <DialogContent>
+              <Stack spacing={2} sx={{ mt: 2 }}>
+                <TextField
+                  fullWidth
+                  label="提示词名称"
+                  value={nameInput}
+                  onChange={(e) => setNameInput(e.target.value)}
+                />
+                <TextField
+                  fullWidth
+                  label="提示词内容"
+                  value={contentInput}
+                  onChange={(e) => setContentInput(e.target.value)}
+                  multiline
+                  rows={4}
+                />
+              </Stack>
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={() => setEditingIndex(null)}>取消</Button>
+              <Button onClick={handlePromptSave} variant="contained">
+                保存
+              </Button>
+            </DialogActions>
+          </Dialog>
+        )}
+      </Dialog>
+    </PromptContext.Provider>
+  )
+}
+
+export default CustomPromptLibrary

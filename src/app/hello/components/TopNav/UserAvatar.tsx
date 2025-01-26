@@ -15,7 +15,22 @@ import LogoutButton from '../Auth/LogoutButton';
 import UpgradeButton from '../Account/UpgradeButton';
 import DarkModeIcon from '@mui/icons-material/DarkMode';
 import LightModeIcon from '@mui/icons-material/LightMode';
-import CustomizeAIDialog, { AISettings } from '../Dialogs/CustomizeAIDialog';
+import CustomizeAIDialog from '../Dialogs/CustomizeAIDialog';
+import SmartToyIcon from '@mui/icons-material/SmartToy';
+
+// 确保AISettings类型定义在UserAvatar.tsx中
+interface AISettings {
+  name: string;
+  role: string;
+  traits: string[];
+  prompts: Prompt[];
+}
+
+// 确保Prompt类型定义在UserAvatar.tsx中
+interface Prompt {
+  name: string;
+  content: string;
+}
 
 interface UserAvatarProps {
   onThemeToggle: () => void;
@@ -51,11 +66,11 @@ const UserAvatar: React.FC<UserAvatarProps> = ({ onThemeToggle, onUpgrade, isDar
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [isCustomizeAIOpen, setIsCustomizeAIOpen] = useState(false);
-  const [aiSettings, setAISettings] = useState<AISettings>({
+  const [aiSettings] = useState<AISettings>({
     name: '',
     role: '',
     traits: [],
-    additionalInfo: ''
+    prompts: []
   });
 
   const handleClick = (event: React.MouseEvent<HTMLElement>) => {
@@ -97,23 +112,10 @@ const UserAvatar: React.FC<UserAvatarProps> = ({ onThemeToggle, onUpgrade, isDar
     }
   };
 
-  const handleCustomizeAI = async (settings: AISettings) => {
-    try {
-      const response = await fetch('/api/customize-ai', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(settings),
-      });
-
-      if (response.ok) {
-        setAISettings(settings);
-        handleClose();
-      }
-    } catch (error) {
-      console.error('自定义AI失败:', error);
-    }
+  const handleCustomizeAI = async (prompts: Prompt[]) => {
+    // 根据需要调整逻辑以处理Prompt[]
+    console.log('Received prompts:', prompts);
+    // 这里可以添加处理prompts的逻辑
   };
 
   return (
@@ -138,7 +140,7 @@ const UserAvatar: React.FC<UserAvatarProps> = ({ onThemeToggle, onUpgrade, isDar
         <UpgradeButton onUpgrade={onUpgrade} />
         <MenuItem onClick={() => setIsCustomizeAIOpen(true)}>
           <ListItemIcon>
-            <EditIcon />
+            <SmartToyIcon />
           </ListItemIcon>
           <ListItemText primary="自定义AI" />
         </MenuItem>
@@ -161,7 +163,7 @@ const UserAvatar: React.FC<UserAvatarProps> = ({ onThemeToggle, onUpgrade, isDar
         open={isCustomizeAIOpen}
         onClose={() => setIsCustomizeAIOpen(false)}
         onSave={handleCustomizeAI}
-        initialSettings={aiSettings}
+        initialPrompts={aiSettings.prompts}
       />
     </>
   );
