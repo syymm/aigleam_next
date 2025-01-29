@@ -10,7 +10,8 @@ import {
   List, 
   ListItem, 
   ListItemText, 
-  Button 
+  Button,
+  Tooltip 
 } from '@mui/material';
 import SendIcon from '@mui/icons-material/Send';
 import AttachFileIcon from '@mui/icons-material/AttachFile';
@@ -258,27 +259,31 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
           position: 'relative',
           zIndex: 2,
         }}>
-          <IconButton 
-            onClick={handleAttachClick}
-            sx={{ 
-              color: theme.palette.primary.main,
-              padding: '8px',
-              '&:hover': { backgroundColor: 'transparent' }
-            }}
-          >
-            <AttachFileIcon />
-          </IconButton>
+          <Tooltip title="上传文件" placement="top">
+            <IconButton 
+              onClick={handleAttachClick}
+              sx={{ 
+                color: theme.palette.primary.main,
+                padding: '8px',
+                '&:hover': { backgroundColor: 'transparent' }
+              }}
+            >
+              <AttachFileIcon />
+            </IconButton>
+          </Tooltip>
 
-          <IconButton 
-            onClick={handleMagicWandClick}
-            sx={{ 
-              color: theme.palette.primary.main,
-              padding: '8px',
-              '&:hover': { backgroundColor: 'transparent' }
-            }}
-          >
-            <MagicWandIcon />
-          </IconButton>
+          <Tooltip title="选择提示词" placement="top">
+            <IconButton 
+              onClick={handleMagicWandClick}
+              sx={{ 
+                color: theme.palette.primary.main,
+                padding: '8px',
+                '&:hover': { backgroundColor: 'transparent' }
+              }}
+            >
+              <MagicWandIcon />
+            </IconButton>
+          </Tooltip>
 
           <TextField
             fullWidth
