@@ -17,7 +17,8 @@ model User {
   id            Int            @id @default(autoincrement())
   username      String         @unique
   password      String
-  conversations Conversation[] 
+  conversations Conversation[]
+  prompts       Prompt[]       // 添加这一行
 }
 
 model Conversation {
@@ -40,5 +41,15 @@ model Message {
   fileType       String?
   fileName       String?
   createdAt      DateTime     @default(now())
+}
+
+model Prompt {
+  id        String   @id @default(uuid())
+  name      String
+  content   String
+  user      User     @relation(fields: [userId], references: [id])
+  userId    Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
