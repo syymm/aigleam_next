@@ -142,7 +142,7 @@ const UserAvatar: React.FC<UserAvatarProps> = ({ onThemeToggle, onUpgrade, isDar
           <ListItemIcon>
             <SmartToyIcon />
           </ListItemIcon>
-          <ListItemText primary="自定义AI" />
+          <ListItemText primary="MyPrompt" />
         </MenuItem>
         <MenuItem onClick={onThemeToggle}>
           <ListItemIcon>
