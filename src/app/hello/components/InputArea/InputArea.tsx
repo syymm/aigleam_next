@@ -1,10 +1,10 @@
-// InputArea.tsx
 import React, { useState, useRef, ChangeEvent } from 'react';
 import { 
   TextField, 
   IconButton, 
   Box, 
-  Tooltip 
+  Tooltip,
+  alpha 
 } from '@mui/material';
 import SendIcon from '@mui/icons-material/Send';
 import AttachFileIcon from '@mui/icons-material/AttachFile';
@@ -14,25 +14,37 @@ import DescriptionIcon from '@mui/icons-material/Description';
 import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
 import MagicWandIcon from '@mui/icons-material/AutoFixHigh';
 import { useTheme } from '../../../contexts/ThemeContext';
-import { InputAreaProps } from '../../types';
-import { usePromptContext } from '../Dialogs/CustomizeAIDialog';
+import CustomizeAIDialog from '../Dialogs/CustomizeAIDialog';
 import PromptSelectionDialog from './PromptSelectionDialog';
 
+// 定义接口
+interface InputAreaProps {
+  onSendMessage: (message: string, files: File[]) => void;
+}
+
 interface Prompt {
+  id?: string;
   name: string;
   content: string;
+  userId?: number;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
+  // 状态管理
   const { theme } = useTheme();
   const [inputValue, setInputValue] = useState('');
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [isDragging, setIsDragging] = useState(false);
+  const [isPromptSelectionOpen, setIsPromptSelectionOpen] = useState(false);
+  const [isCustomizeDialogOpen, setIsCustomizeDialogOpen] = useState(false);
+  
+  // refs
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dragCounter = useRef(0);
-  const [isPromptSelectionOpen, setIsPromptSelectionOpen] = useState(false);
-  const prompts = usePromptContext();
 
+  // 处理发送消息
   const handleSend = () => {
     if (inputValue.trim() || selectedFiles.length > 0) {
       onSendMessage(inputValue, selectedFiles);
@@ -44,6 +56,7 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
     }
   };
 
+  // 处理按键事件
   const handleKeyPress = (event: React.KeyboardEvent<HTMLDivElement>) => {
     if (event.key === 'Enter' && !event.shiftKey) {
       event.preventDefault();
@@ -51,14 +64,7 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
     }
   };
 
-  const handleFileSelect = (event: ChangeEvent<HTMLInputElement>) => {
-    if (event.target.files && event.target.files.length > 0) {
-      const files = Array.from(event.target.files);
-      const validFiles = validateFiles(files);
-      setSelectedFiles(prev => [...prev, ...validFiles]);
-    }
-  };
-
+  // 文件处理相关函数
   const validateFiles = (files: File[]) => {
     return files.filter(file => {
       if (file.size > 10 * 1024 * 1024) {
@@ -69,6 +75,23 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
     });
   };
 
+  const handleFileSelect = (event: ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files && event.target.files.length > 0) {
+      const files = Array.from(event.target.files);
+      const validFiles = validateFiles(files);
+      setSelectedFiles(prev => [...prev, ...validFiles]);
+    }
+  };
+
+  const handleAttachClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleRemoveFile = (index: number) => {
+    setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
+  // 拖拽相关函数
   const handleDragEnter = (event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault();
     event.stopPropagation();
@@ -103,14 +126,18 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
     }
   };
 
-  const handleAttachClick = () => {
-    fileInputRef.current?.click();
+  // 提示词相关函数
+  const handlePromptSelect = (selectedPrompt: Prompt) => {
+    setInputValue(selectedPrompt.content);
+    setIsPromptSelectionOpen(false);
   };
 
-  const handleRemoveFile = (index: number) => {
-    setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+  const handleOpenCustomize = () => {
+    setIsPromptSelectionOpen(false);
+    setIsCustomizeDialogOpen(true);
   };
 
+  // 文件图标渲染函数
   const getFileIcon = (fileType: string) => {
     const iconStyle = {
       fontSize: '16px',
@@ -125,11 +152,6 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
       return <InsertDriveFileIcon sx={{ ...iconStyle, color: '#2196F3' }} />;
     }
     return <InsertDriveFileIcon sx={{ ...iconStyle, color: '#757575' }} />;
-  };
-
-  const handlePromptSelect = (selectedPrompt: Prompt) => {
-    console.log('Selected prompt:', selectedPrompt);
-    setIsPromptSelectionOpen(false);
   };
 
   return (
@@ -161,6 +183,7 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
           position: 'relative',
         }}
       >
+        {/* 拖拽提示层 */}
         {isDragging && (
           <Box
             sx={{
@@ -195,6 +218,7 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
           </Box>
         )}
 
+        {/* 已选文件展示区 */}
         {selectedFiles.length > 0 && (
           <Box sx={{ 
             display: 'flex',
@@ -243,6 +267,7 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
           </Box>
         )}
 
+        {/* 输入区域 */}
         <Box sx={{ 
           display: 'flex', 
           alignItems: 'center',
@@ -319,6 +344,7 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
         </Box>
       </Box>
 
+      {/* 隐藏的文件输入 */}
       <input
         type="file"
         ref={fileInputRef}
@@ -328,12 +354,21 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
         multiple
       />
 
+      {/* 提示词选择对话框 */}
       {isPromptSelectionOpen && (
         <PromptSelectionDialog
           open={isPromptSelectionOpen}
           onClose={() => setIsPromptSelectionOpen(false)}
           onSelect={handlePromptSelect}
-          prompts={prompts}
+          onOpenCustomize={handleOpenCustomize}
+        />
+      )}
+
+      {/* 提示词管理对话框 */}
+      {isCustomizeDialogOpen && (
+        <CustomizeAIDialog
+          open={isCustomizeDialogOpen}
+          onClose={() => setIsCustomizeDialogOpen(false)}
         />
       )}
     </Box>
