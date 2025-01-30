@@ -1,28 +1,22 @@
+// InputArea.tsx
 import React, { useState, useRef, ChangeEvent } from 'react';
 import { 
   TextField, 
   IconButton, 
   Box, 
-  Dialog, 
-  DialogTitle, 
-  DialogContent, 
-  DialogActions, 
-  List, 
-  ListItem, 
-  ListItemText, 
-  Button,
   Tooltip 
 } from '@mui/material';
 import SendIcon from '@mui/icons-material/Send';
 import AttachFileIcon from '@mui/icons-material/AttachFile';
-import { useTheme } from '../../../contexts/ThemeContext';
-import { InputAreaProps } from '../../types';
 import CloseIcon from '@mui/icons-material/Close';
 import ImageIcon from '@mui/icons-material/Image';
 import DescriptionIcon from '@mui/icons-material/Description';
 import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
 import MagicWandIcon from '@mui/icons-material/AutoFixHigh';
+import { useTheme } from '../../../contexts/ThemeContext';
+import { InputAreaProps } from '../../types';
 import { usePromptContext } from '../Dialogs/CustomizeAIDialog';
+import PromptSelectionDialog from './PromptSelectionDialog';
 
 interface Prompt {
   name: string;
@@ -131,10 +125,6 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
       return <InsertDriveFileIcon sx={{ ...iconStyle, color: '#2196F3' }} />;
     }
     return <InsertDriveFileIcon sx={{ ...iconStyle, color: '#757575' }} />;
-  };
-
-  const handleMagicWandClick = () => {
-    setIsPromptSelectionOpen(true);
   };
 
   const handlePromptSelect = (selectedPrompt: Prompt) => {
@@ -274,7 +264,7 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
 
           <Tooltip title="选择提示词" placement="top">
             <IconButton 
-              onClick={handleMagicWandClick}
+              onClick={() => setIsPromptSelectionOpen(true)}
               sx={{ 
                 color: theme.palette.primary.main,
                 padding: '8px',
@@ -351,30 +341,3 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
 };
 
 export default InputArea;
-
-interface PromptSelectionDialogProps {
-  open: boolean;
-  onClose: () => void;
-  onSelect: (prompt: Prompt) => void;
-  prompts: Prompt[];
-}
-
-const PromptSelectionDialog: React.FC<PromptSelectionDialogProps> = ({ open, onClose, onSelect, prompts }) => {
-  return (
-    <Dialog open={open} onClose={onClose}>
-      <DialogTitle>选择提示词</DialogTitle>
-      <DialogContent>
-        <List>
-          {prompts.map((prompt, index) => (
-            <ListItem button key={index} onClick={() => onSelect(prompt)}>
-              <ListItemText primary={prompt.name} />
-            </ListItem>
-          ))}
-        </List>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose}>取消</Button>
-      </DialogActions>
-    </Dialog>
-  );
-};
