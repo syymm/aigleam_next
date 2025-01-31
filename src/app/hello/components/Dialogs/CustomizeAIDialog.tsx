@@ -1,4 +1,4 @@
-// CustomPromptLibrary.tsx
+// CustomizeAIDialog.tsx
 import type React from "react"
 import { useState, useEffect, createContext, useContext } from "react"
 import {
@@ -21,7 +21,7 @@ import {
 import { styled } from "@mui/material/styles"
 import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, Save as SaveIcon } from "@mui/icons-material"
 
-// iOS风格的样式组件
+// iOS风格的样式组件定义
 const IOSDialog = styled(Dialog)(({ theme }) => ({
   '& .MuiDialog-paper': {
     borderRadius: 20,
@@ -68,7 +68,7 @@ const IOSButton = styled(Button)(({ theme }) => ({
   },
 }))
 
-// 接口定义
+// 接口定义 - 将 Prompt 接口保持不变，因为它描述的是数据结构而不是组件
 export interface Prompt {
   id?: string
   name: string
@@ -78,25 +78,28 @@ export interface Prompt {
   updatedAt?: string
 }
 
-interface CustomPromptLibraryProps {
+// 更新组件的 Props 接口名称，保持与组件名一致
+interface CustomizeAIDialogProps {
   open: boolean
   onClose: () => void
   onSave?: (prompts: Prompt[]) => Promise<void>
   initialPrompts?: Prompt[]
 }
 
-// 创建提示词上下文
-const PromptContext = createContext<Prompt[]>([])
+// 更新 Context 名称，保持一致性
+const CustomizeAIContext = createContext<Prompt[]>([])
 
-export const usePromptContext = () => {
-  const context = useContext(PromptContext)
+// 更新 Context Hook 名称
+export const useCustomizeAIContext = () => {
+  const context = useContext(CustomizeAIContext)
   if (context === undefined) {
-    throw new Error('usePromptContext 必须在 PromptContext.Provider 内使用')
+    throw new Error('useCustomizeAIContext 必须在 CustomizeAIContext.Provider 内使用')
   }
   return context
 }
 
-const CustomPromptLibrary: React.FC<CustomPromptLibraryProps> = ({
+// 更新组件名称为 CustomizeAIDialog
+const CustomizeAIDialog: React.FC<CustomizeAIDialogProps> = ({
   open,
   onClose,
   onSave,
@@ -208,7 +211,7 @@ const CustomPromptLibrary: React.FC<CustomPromptLibraryProps> = ({
   }
 
   return (
-    <PromptContext.Provider value={prompts}>
+    <CustomizeAIContext.Provider value={prompts}>
       <IOSDialog open={open} onClose={handleClose} maxWidth="lg" fullWidth>
         <DialogTitle>提示词库 🏛️</DialogTitle>
         <DialogContent sx={{ px: 3, pb: 3, position: 'relative' }}>
@@ -428,8 +431,8 @@ const CustomPromptLibrary: React.FC<CustomPromptLibraryProps> = ({
           {success}
         </Alert>
       </Snackbar>
-    </PromptContext.Provider>
+    </CustomizeAIContext.Provider>
   )
 }
 
-export default CustomPromptLibrary
+export default CustomizeAIDialog
