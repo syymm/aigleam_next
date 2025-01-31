@@ -1,3 +1,4 @@
+// CustomPromptLibrary.tsx
 import type React from "react"
 import { useState, useEffect, createContext, useContext } from "react"
 import {
@@ -20,7 +21,7 @@ import {
 import { styled } from "@mui/material/styles"
 import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, Save as SaveIcon } from "@mui/icons-material"
 
-// 保持原有的样式组件不变...
+// iOS风格的样式组件
 const IOSDialog = styled(Dialog)(({ theme }) => ({
   '& .MuiDialog-paper': {
     borderRadius: 20,
@@ -67,8 +68,8 @@ const IOSButton = styled(Button)(({ theme }) => ({
   },
 }))
 
-// 更新 Prompt 接口以匹配数据库模型
-interface Prompt {
+// 接口定义
+export interface Prompt {
   id?: string
   name: string
   content: string
@@ -80,14 +81,17 @@ interface Prompt {
 interface CustomPromptLibraryProps {
   open: boolean
   onClose: () => void
+  onSave?: (prompts: Prompt[]) => Promise<void>
+  initialPrompts?: Prompt[]
 }
 
+// 创建提示词上下文
 const PromptContext = createContext<Prompt[]>([])
 
 export const usePromptContext = () => {
   const context = useContext(PromptContext)
   if (context === undefined) {
-    throw new Error('usePromptContext must be used within a PromptContext.Provider')
+    throw new Error('usePromptContext 必须在 PromptContext.Provider 内使用')
   }
   return context
 }
@@ -95,8 +99,10 @@ export const usePromptContext = () => {
 const CustomPromptLibrary: React.FC<CustomPromptLibraryProps> = ({
   open,
   onClose,
+  onSave,
+  initialPrompts = [],
 }) => {
-  const [prompts, setPrompts] = useState<Prompt[]>([])
+  const [prompts, setPrompts] = useState<Prompt[]>(initialPrompts)
   const [currentPrompt, setCurrentPrompt] = useState<Prompt>({ name: '', content: '' })
   const [editingIndex, setEditingIndex] = useState<number | null>(null)
   const [loading, setLoading] = useState(false)
@@ -124,13 +130,14 @@ const CustomPromptLibrary: React.FC<CustomPromptLibraryProps> = ({
     }
   }, [open])
 
+  // 处理添加或更新提示词
   const handleAddOrUpdatePrompt = async () => {
     if (!currentPrompt.name.trim() || !currentPrompt.content.trim()) return
 
     try {
       setLoading(true)
       if (editingIndex !== null && currentPrompt.id) {
-        // 更新提示词
+        // 更新现有提示词
         const response = await fetch(`/api/prompts/${currentPrompt.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
@@ -154,7 +161,12 @@ const CustomPromptLibrary: React.FC<CustomPromptLibraryProps> = ({
         if (!response.ok) throw new Error('创建提示词失败')
         setSuccess('提示词创建成功')
       }
+      
       await fetchPrompts()
+      if (onSave) {
+        await onSave(prompts)
+      }
+      
       setCurrentPrompt({ name: '', content: '' })
       setEditingIndex(null)
     } catch (err) {
@@ -179,6 +191,9 @@ const CustomPromptLibrary: React.FC<CustomPromptLibraryProps> = ({
       if (!response.ok) throw new Error('删除提示词失败')
       setSuccess('提示词删除成功')
       await fetchPrompts()
+      if (onSave) {
+        await onSave(prompts.filter((_, i) => i !== index))
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : '删除失败')
     } finally {
@@ -216,7 +231,7 @@ const CustomPromptLibrary: React.FC<CustomPromptLibraryProps> = ({
             </Box>
           )}
           <Grid container spacing={3} sx={{ mt: 0 }}>
-            {/* 左侧编辑区域 */}
+            {/* 编辑区域 */}
             <Grid item xs={12} md={6}>
               <IOSPaper sx={{ p: 3, height: '100%' }}>
                 <Typography 
@@ -260,7 +275,7 @@ const CustomPromptLibrary: React.FC<CustomPromptLibraryProps> = ({
               </IOSPaper>
             </Grid>
 
-            {/* 右侧列表区域 */}
+            {/* 提示词列表 */}
             <Grid item xs={12} md={6}>
               <IOSPaper sx={{ p: 3, height: '100%' }}>
                 <Typography 
