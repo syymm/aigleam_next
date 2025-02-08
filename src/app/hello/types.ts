@@ -1,4 +1,12 @@
-// src/app/hello/types.ts
+// Prompt 接口
+export interface Prompt {
+  id?: string;
+  name: string;
+  content: string;
+  userId?: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
 
 // 消息接口
 export interface Message {
@@ -8,6 +16,10 @@ export interface Message {
   fileName?: string;
   fileType?: string;
   fileUrl?: string;
+  prompt?: {
+    name: string;
+    content: string;
+  };
 }
 
 // 对话接口
@@ -51,7 +63,15 @@ export interface ChatAreaProps {
 
 // InputArea组件的Props接口
 export interface InputAreaProps {
-  onSendMessage: (content: string, files?: File[]) => void;
+  onSendMessage: (content: string, files?: File[], activePrompt?: Prompt | null) => void;
+}
+
+// PromptSelectionDialog组件的Props接口
+export interface PromptSelectionDialogProps {
+  open: boolean;
+  onClose: () => void;
+  onSelect: (prompt: Prompt) => void;
+  onOpenCustomize: () => void;
 }
 
 // WelcomeScreen组件的Props接口

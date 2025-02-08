@@ -19,7 +19,13 @@
     ],
     "paths": {
       "@/*": ["./src/*"]
-    }
+    },
+    // 添加以下配置
+    "strictNullChecks": true,            // 更严格的空值检查
+    "noImplicitAny": true,              // 禁止隐式的 any 类型
+    "strictFunctionTypes": true,         // 更严格的函数类型检查
+    "noUncheckedIndexedAccess": true,   // 访问数组和对象时进行更严格的检查
+    "forceConsistentCasingInFileNames": true  // 确保文件名大小写一致
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
   "exclude": ["node_modules"]

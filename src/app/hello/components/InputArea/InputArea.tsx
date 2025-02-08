@@ -4,6 +4,8 @@ import {
   IconButton, 
   Box, 
   Tooltip,
+  Chip,
+  Typography,
   alpha 
 } from '@mui/material';
 import SendIcon from '@mui/icons-material/Send';
@@ -13,13 +15,14 @@ import ImageIcon from '@mui/icons-material/Image';
 import DescriptionIcon from '@mui/icons-material/Description';
 import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
 import MagicWandIcon from '@mui/icons-material/AutoFixHigh';
+import CancelIcon from '@mui/icons-material/Cancel';
 import { useTheme } from '../../../contexts/ThemeContext';
 import CustomizeAIDialog from '../Dialogs/CustomizeAIDialog';
 import PromptSelectionDialog from './PromptSelectionDialog';
 
 // 定义接口
 interface InputAreaProps {
-  onSendMessage: (message: string, files: File[]) => void;
+  onSendMessage: (message: string, files: File[], activePrompt?: Prompt | null) => void;
 }
 
 interface Prompt {
@@ -39,17 +42,18 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
   const [isDragging, setIsDragging] = useState(false);
   const [isPromptSelectionOpen, setIsPromptSelectionOpen] = useState(false);
   const [isCustomizeDialogOpen, setIsCustomizeDialogOpen] = useState(false);
+  const [activePrompt, setActivePrompt] = useState<Prompt | null>(null);
   
-  // refs
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dragCounter = useRef(0);
 
   // 处理发送消息
   const handleSend = () => {
     if (inputValue.trim() || selectedFiles.length > 0) {
-      onSendMessage(inputValue, selectedFiles);
+      onSendMessage(inputValue, selectedFiles, activePrompt);
       setInputValue('');
       setSelectedFiles([]);
+      setActivePrompt(null); // 发送后清除当前prompt
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
@@ -128,8 +132,21 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
 
   // 提示词相关函数
   const handlePromptSelect = (selectedPrompt: Prompt) => {
-    setInputValue(selectedPrompt.content);
+    setActivePrompt(selectedPrompt);
     setIsPromptSelectionOpen(false);
+    // 如果当前输入框有内容，立即发送
+    if (inputValue.trim() || selectedFiles.length > 0) {
+      onSendMessage(inputValue, selectedFiles, selectedPrompt);
+      setInputValue('');
+      setSelectedFiles([]);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const handleClearPrompt = () => {
+    setActivePrompt(null);
   };
 
   const handleOpenCustomize = () => {
@@ -158,193 +175,230 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
     <Box sx={{ 
       p: 2,
       display: 'flex',
-      alignItems: 'flex-end',
-      justifyContent: 'center',
-      position: 'relative',
+      flexDirection: 'column',
+      gap: 1,
     }}>
+      {/* Active Prompt Indicator */}
+      {activePrompt && (
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 1,
+            mb: 1
+          }}
+        >
+          <Chip
+            label={
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <MagicWandIcon sx={{ fontSize: 16 }} />
+                <Typography variant="body2">
+                  使用中的提示词: {activePrompt.name}
+                </Typography>
+              </Box>
+            }
+            onDelete={handleClearPrompt}
+            deleteIcon={<CancelIcon />}
+            sx={{
+              bgcolor: alpha(theme.palette.primary.main, 0.1),
+              '& .MuiChip-label': {
+                display: 'flex',
+                alignItems: 'center',
+              }
+            }}
+          />
+        </Box>
+      )}
+
       <Box 
-        onDragEnter={handleDragEnter}
-        onDragLeave={handleDragLeave}
-        onDragOver={handleDragOver}
-        onDrop={handleDrop}
         sx={{ 
-          display: 'flex', 
-          flexDirection: 'column',
-          alignItems: 'stretch',
-          backgroundColor: theme.palette.background.paper,
-          borderRadius: '16px',
-          padding: '8px 16px',
-          width: '70%',
-          boxShadow: '0 2px 10px rgba(0, 0, 0, 0.1)',
-          border: isDragging 
-            ? `2px dashed ${theme.palette.primary.main}` 
-            : `1px solid ${theme.palette.divider}`,
-          transition: 'all 0.2s ease',
+          display: 'flex',
+          alignItems: 'flex-end',
+          justifyContent: 'center',
           position: 'relative',
         }}
       >
-        {/* 拖拽提示层 */}
-        {isDragging && (
-          <Box
-            sx={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              backgroundColor: 'rgba(25, 118, 210, 0.08)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              borderRadius: '16px',
-              zIndex: 1,
-              pointerEvents: 'none',
-              backdropFilter: 'blur(2px)',
-              transition: 'all 0.2s ease',
-            }}
-          >
-            <Box sx={{ 
-              color: theme.palette.primary.main,
-              fontWeight: 'bold',
-              fontSize: '1.1rem',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              gap: 1,
-            }}>
-              <AttachFileIcon sx={{ fontSize: 32 }} />
-              松开鼠标上传文件
+        <Box 
+          onDragEnter={handleDragEnter}
+          onDragLeave={handleDragLeave}
+          onDragOver={handleDragOver}
+          onDrop={handleDrop}
+          sx={{ 
+            display: 'flex', 
+            flexDirection: 'column',
+            alignItems: 'stretch',
+            backgroundColor: theme.palette.background.paper,
+            borderRadius: '16px',
+            padding: '8px 16px',
+            width: '70%',
+            boxShadow: '0 2px 10px rgba(0, 0, 0, 0.1)',
+            border: isDragging 
+              ? `2px dashed ${theme.palette.primary.main}`
+              : `1px solid ${theme.palette.divider}`,
+            transition: 'all 0.2s ease',
+            position: 'relative',
+          }}
+        >
+          {isDragging && (
+            <Box
+              sx={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                backgroundColor: 'rgba(25, 118, 210, 0.08)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderRadius: '16px',
+                zIndex: 1,
+                pointerEvents: 'none',
+                backdropFilter: 'blur(2px)',
+                transition: 'all 0.2s ease',
+              }}
+            >
+              <Box sx={{ 
+                color: theme.palette.primary.main,
+                fontWeight: 'bold',
+                fontSize: '1.1rem',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: 1,
+              }}>
+                <AttachFileIcon sx={{ fontSize: 32 }} />
+                松开鼠标上传文件
+              </Box>
             </Box>
-          </Box>
-        )}
+          )}
 
-        {/* 已选文件展示区 */}
-        {selectedFiles.length > 0 && (
-          <Box sx={{ 
-            display: 'flex',
-            flexWrap: 'wrap',
-            gap: '4px',
-            padding: '4px 8px',
-            marginBottom: '4px',
-            ml: '40px',
-          }}>
-            {selectedFiles.map((file, index) => (
-              <Box
-                key={`${file.name}-${index}`}
-                sx={{ 
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                  padding: '4px 8px',
-                  backgroundColor: theme.palette.action.hover,
-                  borderRadius: '4px',
-                  maxWidth: 'fit-content',
-                }}
-              >
-                {getFileIcon(file.type)}
-                <span style={{ 
-                  fontSize: '0.875rem',
-                  maxWidth: '200px',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                }}>
-                  {file.name}
-                </span>
-                <IconButton
-                  size="small"
-                  onClick={() => handleRemoveFile(index)}
+          {selectedFiles.length > 0 && (
+            <Box sx={{ 
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: '4px',
+              padding: '4px 8px',
+              marginBottom: '4px',
+              ml: '40px',
+            }}>
+              {selectedFiles.map((file, index) => (
+                <Box
+                  key={`${file.name}-${index}`}
                   sx={{ 
-                    padding: '2px',
-                    marginLeft: '2px',
-                    '&:hover': { backgroundColor: 'rgba(0,0,0,0.04)' }
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    padding: '4px 8px',
+                    backgroundColor: theme.palette.action.hover,
+                    borderRadius: '4px',
+                    maxWidth: 'fit-content',
                   }}
                 >
-                  <CloseIcon sx={{ fontSize: 14 }} />
-                </IconButton>
-              </Box>
-            ))}
-          </Box>
-        )}
+                  {getFileIcon(file.type)}
+                  <span style={{ 
+                    fontSize: '0.875rem',
+                    maxWidth: '200px',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}>
+                    {file.name}
+                  </span>
+                  <IconButton
+                    size="small"
+                    onClick={() => handleRemoveFile(index)}
+                    sx={{ 
+                      padding: '2px',
+                      marginLeft: '2px',
+                      '&:hover': { backgroundColor: 'rgba(0,0,0,0.04)' }
+                    }}
+                  >
+                    <CloseIcon sx={{ fontSize: 14 }} />
+                  </IconButton>
+                </Box>
+              ))}
+            </Box>
+          )}
 
-        {/* 输入区域 */}
-        <Box sx={{ 
-          display: 'flex', 
-          alignItems: 'center',
-          position: 'relative',
-          zIndex: 2,
-        }}>
-          <Tooltip title="上传文件" placement="top">
-            <IconButton 
-              onClick={handleAttachClick}
-              sx={{ 
-                color: theme.palette.primary.main,
-                padding: '8px',
-                '&:hover': { backgroundColor: 'transparent' }
-              }}
-            >
-              <AttachFileIcon />
-            </IconButton>
-          </Tooltip>
+          <Box sx={{ 
+            display: 'flex', 
+            alignItems: 'center',
+            position: 'relative',
+            zIndex: 2,
+          }}>
+            <Tooltip title="上传文件" placement="top">
+              <IconButton 
+                onClick={handleAttachClick}
+                sx={{ 
+                  color: theme.palette.primary.main,
+                  padding: '8px',
+                  '&:hover': { backgroundColor: 'transparent' }
+                }}
+              >
+                <AttachFileIcon />
+              </IconButton>
+            </Tooltip>
 
-          <Tooltip title="选择提示词" placement="top">
-            <IconButton 
-              onClick={() => setIsPromptSelectionOpen(true)}
-              sx={{ 
-                color: theme.palette.primary.main,
-                padding: '8px',
-                '&:hover': { backgroundColor: 'transparent' }
-              }}
-            >
-              <MagicWandIcon />
-            </IconButton>
-          </Tooltip>
+            <Tooltip title="选择提示词" placement="top">
+              <IconButton 
+                onClick={() => setIsPromptSelectionOpen(true)}
+                sx={{ 
+                  color: theme.palette.primary.main,
+                  padding: '8px',
+                  '&:hover': { backgroundColor: 'transparent' }
+                }}
+              >
+                <MagicWandIcon />
+              </IconButton>
+            </Tooltip>
 
-          <TextField
-            fullWidth
-            variant="standard"
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            onKeyPress={handleKeyPress}
-            InputProps={{
-              disableUnderline: true,
-              style: { 
-                color: theme.palette.text.primary,
-              },
-            }}
-            placeholder={selectedFiles.length > 0 ? "添加消息描述..." : "输入消息..."}
-            multiline
-            maxRows={5}
-            sx={{
-              flexGrow: 1,
-              '& .MuiInputBase-input': {
-                padding: '12px 8px',
-                '&::placeholder': {
-                  color: theme.palette.text.secondary,
-                  opacity: 0.7,
+            <TextField
+              fullWidth
+              variant="standard"
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              onKeyPress={handleKeyPress}
+              InputProps={{
+                disableUnderline: true,
+                style: { 
+                  color: theme.palette.text.primary,
                 },
-              },
-              '& .MuiInputBase-root': {
-                backgroundColor: 'transparent',
-                alignItems: 'center',
-              },
-            }}
-          />
+              }}
+              placeholder={selectedFiles.length > 0 ? "添加消息描述..." : "输入消息..."}
+              multiline
+              maxRows={5}
+              sx={{
+                flexGrow: 1,
+                '& .MuiInputBase-input': {
+                  padding: '12px 8px',
+                  '&::placeholder': {
+                    color: theme.palette.text.secondary,
+                    opacity: 0.7,
+                  },
+                },
+                '& .MuiInputBase-root': {
+                  backgroundColor: 'transparent',
+                  alignItems: 'center',
+                },
+              }}
+            />
 
-          <IconButton 
-            onClick={handleSend}
-            sx={{ 
-              color: theme.palette.primary.main,
-              padding: '8px',
-              '&:hover': { backgroundColor: 'transparent' }
-            }}
-          >
-            <SendIcon />
-          </IconButton>
+            <IconButton 
+              onClick={handleSend}
+              sx={{ 
+                color: theme.palette.primary.main,
+                padding: '8px',
+                '&:hover': { backgroundColor: 'transparent' }
+              }}
+            >
+              <SendIcon />
+            </IconButton>
+          </Box>
         </Box>
       </Box>
 
-      {/* 隐藏的文件输入 */}
       <input
         type="file"
         ref={fileInputRef}
@@ -354,7 +408,6 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
         multiple
       />
 
-      {/* 提示词选择对话框 */}
       {isPromptSelectionOpen && (
         <PromptSelectionDialog
           open={isPromptSelectionOpen}
@@ -364,7 +417,6 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
         />
       )}
 
-      {/* 提示词管理对话框 */}
       {isCustomizeDialogOpen && (
         <CustomizeAIDialog
           open={isCustomizeDialogOpen}

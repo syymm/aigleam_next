@@ -1,6 +1,11 @@
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
-import { ChatCompletionMessageParam } from 'openai/resources/chat/completions';
+import { 
+  ChatCompletionMessageParam,
+  ChatCompletionContentPart,
+  ChatCompletionContentPartImage,
+  ChatCompletionContentPartText
+} from 'openai/resources/chat/completions';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUserId } from '@/lib/auth';
 
@@ -10,6 +15,8 @@ const openai = new OpenAI({
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+
+type MessageContent = ChatCompletionContentPartText | ChatCompletionContentPartImage;
 
 const SUPPORTED_EXTENSIONS = {
   images: ['jpg', 'jpeg', 'png', 'gif', 'webp'],
@@ -82,8 +89,12 @@ export async function POST(request: Request) {
 
     const formData = await request.formData();
     const message = formData.get('message') as string;
-    const model = formData.get('model') as string;
+    const model = formData.get('model') as string || 'gpt-4-turbo-preview';
     const conversationId = formData.get('conversationId') as string;
+    
+    // 获取prompt信息
+    const promptData = formData.get('prompt');
+    const prompt = promptData ? JSON.parse(promptData as string) : null;
     
     // 收集所有文件
     const files: File[] = [];
@@ -104,10 +115,22 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Conversation not found' }, { status: 404 });
     }
 
-    let messages: ChatCompletionMessageParam[] = [{
+    // 准备发送给OpenAI的消息数组
+    let messages: ChatCompletionMessageParam[] = [];
+    
+    // 如果有prompt，将其作为system message添加到消息列表开头
+    if (prompt) {
+      messages.push({
+        role: "system",
+        content: prompt.content
+      });
+    }
+
+    // 添加用户消息
+    messages.push({
       role: "user",
       content: message
-    }];
+    });
 
     // 创建主消息
     const userMessage = await prisma.message.create({
@@ -115,10 +138,12 @@ export async function POST(request: Request) {
         content: message,
         isUser: true,
         conversationId,
+        prompt: prompt?.content,
+        promptName: prompt?.name,
       }
     });
 
-    const imageUrls: { type: "image_url", image_url: { url: string } }[] = [];
+    const imageContents: ChatCompletionContentPartImage[] = [];
 
     // 处理所有文件
     for (const file of files) {
@@ -132,12 +157,12 @@ export async function POST(request: Request) {
           const mimeType = file.type || 'image/jpeg';
           const imageUrl = `data:${mimeType};base64,${base64Image}`;
           
-          imageUrls.push({
+          const imageContent: ChatCompletionContentPartImage = {
             type: "image_url",
-            image_url: {
-              url: imageUrl
-            }
-          });
+            image_url: { url: imageUrl }
+          };
+          
+          imageContents.push(imageContent);
 
           await prisma.message.create({
             data: {
@@ -146,7 +171,9 @@ export async function POST(request: Request) {
               conversationId,
               fileName: file.name,
               fileType: file.type,
-              fileUrl: imageUrl
+              fileUrl: imageUrl,
+              prompt: prompt?.content,
+              promptName: prompt?.name,
             }
           });
           break;
@@ -161,7 +188,9 @@ export async function POST(request: Request) {
               conversationId,
               fileName: file.name,
               fileType: file.type,
-              fileUrl: textContent
+              fileUrl: textContent,
+              prompt: prompt?.content,
+              promptName: prompt?.name,
             }
           });
           break;
@@ -183,7 +212,9 @@ export async function POST(request: Request) {
                 conversationId,
                 fileName: file.name,
                 fileType: file.type,
-                fileUrl: fileUpload.id
+                fileUrl: fileUpload.id,
+                prompt: prompt?.content,
+                promptName: prompt?.name,
               }
             });
           } catch (error) {
@@ -195,7 +226,9 @@ export async function POST(request: Request) {
                 isUser: true,
                 conversationId,
                 fileName: file.name,
-                fileType: file.type
+                fileType: file.type,
+                prompt: prompt?.content,
+                promptName: prompt?.name,
               }
             });
           }
@@ -208,7 +241,9 @@ export async function POST(request: Request) {
               isUser: true,
               conversationId,
               fileName: file.name,
-              fileType: file.type
+              fileType: file.type,
+              prompt: prompt?.content,
+              promptName: prompt?.name,
             }
           });
         }
@@ -216,19 +251,25 @@ export async function POST(request: Request) {
     }
 
     // 更新 OpenAI 消息
-    if (imageUrls.length > 0) {
-      messages = [{
-        role: "user",
-        content: [
-          { type: "text", text: message },
-          ...imageUrls
-        ]
-      }];
+    if (imageContents.length > 0) {
+      const textContent: ChatCompletionContentPartText = {
+        type: "text",
+        text: message
+      };
+
+      // 重构最后一条用户消息，包含文本和图片
+      messages = [
+        ...messages.slice(0, -1),
+        {
+          role: "user",
+          content: [textContent, ...imageContents] as MessageContent[]
+        }
+      ];
     }
 
     const response = await openai.chat.completions.create({
       model: model,
-      messages: messages,
+      messages: messages as ChatCompletionMessageParam[],
       stream: true,
       max_tokens: 2000,
     });
@@ -252,6 +293,8 @@ export async function POST(request: Request) {
               content: fullResponse,
               isUser: false,
               conversationId,
+              prompt: prompt?.content,
+              promptName: prompt?.name,
             }
           });
 

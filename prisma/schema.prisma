@@ -1,9 +1,6 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -18,7 +15,7 @@ model User {
   username      String         @unique
   password      String
   conversations Conversation[]
-  prompts       Prompt[]       // 添加这一行
+  prompts       Prompt[]      
 }
 
 model Conversation {
@@ -41,6 +38,9 @@ model Message {
   fileType       String?
   fileName       String?
   createdAt      DateTime     @default(now())
+  // 修改 prompt 关联
+  prompt         String?      // 存储 prompt 内容
+  promptName     String?      // 存储 prompt 名称
 }
 
 model Prompt {
@@ -52,4 +52,3 @@ model Prompt {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
-

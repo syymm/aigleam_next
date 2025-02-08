@@ -56,7 +56,7 @@ interface PromptSelectionDialogProps {
   open: boolean;
   onClose: () => void;
   onSelect: (prompt: Prompt) => void;
-  onOpenCustomize: () => void;  // 新增：打开CustomizeAIDialog的回调
+  onOpenCustomize: () => void;
 }
 
 const PromptSelectionDialog: React.FC<PromptSelectionDialogProps> = ({ 
@@ -90,9 +90,9 @@ const PromptSelectionDialog: React.FC<PromptSelectionDialogProps> = ({
     }
   }, [open]);
 
+  // 选择提示词时直接传递完整的prompt对象
   const handleSelect = (prompt: Prompt) => {
     onSelect(prompt);
-    onClose();
   };
 
   const handleOpenCustomize = () => {
@@ -163,6 +163,11 @@ const PromptSelectionDialog: React.FC<PromptSelectionDialogProps> = ({
                   primary={prompt.name}
                   primaryTypographyProps={{
                     fontWeight: 500
+                  }}
+                  secondary={prompt.content}
+                  secondaryTypographyProps={{
+                    noWrap: true,
+                    sx: { opacity: 0.7 }
                   }}
                 />
               </ListItem>

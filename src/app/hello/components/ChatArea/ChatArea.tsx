@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Box, Paper, Typography, Popover, CircularProgress } from '@mui/material';
+import { Box, Paper, Typography, Popover, CircularProgress, alpha } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import { styled } from '@mui/material/styles';
 import FormatQuoteIcon from '@mui/icons-material/FormatQuote';
@@ -10,6 +10,7 @@ import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import DescriptionIcon from '@mui/icons-material/Description';
 import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
 import ImageIcon from '@mui/icons-material/Image';
+import AutoFixHighIcon from '@mui/icons-material/AutoFixHigh';
 
 interface Message {
   id: string;
@@ -18,6 +19,10 @@ interface Message {
   fileName?: string;
   fileType?: string;
   fileUrl?: string;
+  prompt?: {
+    name: string;
+    content: string;
+  };
 }
 
 interface ChatAreaProps {
@@ -60,6 +65,20 @@ const FilePreview = styled(Box)(({ theme }) => ({
   display: 'flex',
   alignItems: 'center',
   gap: theme.spacing(1),
+}));
+
+const PromptChip = styled(Box)(({ theme }) => ({
+  display: 'inline-flex',
+  alignItems: 'center',
+  padding: '4px 8px',
+  borderRadius: theme.shape.borderRadius,
+  backgroundColor: theme.palette.mode === 'dark'
+    ? alpha(theme.palette.primary.main, 0.2)
+    : alpha(theme.palette.primary.main, 0.1),
+  color: theme.palette.primary.main,
+  fontSize: '0.75rem',
+  marginBottom: theme.spacing(1),
+  gap: theme.spacing(0.5),
 }));
 
 const ChatArea: React.FC<ChatAreaProps> = ({ 
@@ -110,12 +129,11 @@ const ChatArea: React.FC<ChatAreaProps> = ({
   };
 
   const renderMessage = (message: Message, index: number) => {
-    // 查找当前消息相关的文件消息（包括下一条和后续的文件消息）
     const findRelatedFileMessages = () => {
       const fileMessages: Message[] = [];
       for (let i = index + 1; i < messages.length; i++) {
         const nextMsg = messages[i];
-        if (!nextMsg.isUser || !nextMsg.fileName) break;
+        if (!nextMsg || !nextMsg.isUser || !nextMsg.fileName) break;
         fileMessages.push(nextMsg);
       }
       return fileMessages;
@@ -124,8 +142,8 @@ const ChatArea: React.FC<ChatAreaProps> = ({
     const isFileMessage = message.fileName && message.fileType;
     const relatedFileMessages = !isFileMessage ? findRelatedFileMessages() : [];
     
-    // 如果是文件消息，且前一条是用户消息，则跳过（因为会在用户消息中显示）
-    if (isFileMessage && index > 0 && messages[index - 1].isUser) {
+    const previousMessage = index > 0 ? messages[index - 1] : null;
+    if (isFileMessage && previousMessage?.isUser) {
       return null;
     }
 
@@ -139,6 +157,16 @@ const ChatArea: React.FC<ChatAreaProps> = ({
         }}
       >
         <MessagePaper elevation={1} onMouseUp={handleTextSelection}>
+          {/* 显示Prompt信息 */}
+          {message.isUser && message.prompt && (
+            <PromptChip>
+              <AutoFixHighIcon sx={{ fontSize: 16 }} />
+              <Typography variant="caption">
+                使用提示词: {message.prompt.name}
+              </Typography>
+            </PromptChip>
+          )}
+
           {/* 消息内容 */}
           {message.content && !message.content.startsWith('已上传') && (
             <Typography 
