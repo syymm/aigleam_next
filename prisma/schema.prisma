@@ -15,17 +15,19 @@ model User {
   username      String         @unique
   password      String
   conversations Conversation[]
-  prompts       Prompt[]      
+  prompts       Prompt[]
 }
 
 model Conversation {
-  id        String    @id @default(uuid())
-  title     String
-  user      User      @relation(fields: [userId], references: [id])
-  userId    Int
-  messages  Message[]
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  id          String    @id @default(uuid())
+  title       String
+  user        User      @relation(fields: [userId], references: [id])
+  userId      Int
+  messages    Message[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  // 新增字段：用于保存该会话的固定 Prompt
+  systemPrompt String?
 }
 
 model Message {
@@ -38,9 +40,9 @@ model Message {
   fileType       String?
   fileName       String?
   createdAt      DateTime     @default(now())
-  // 修改 prompt 关联
-  prompt         String?      // 存储 prompt 内容
-  promptName     String?      // 存储 prompt 名称
+  // 保留 prompt 关联字段（若仍需要记录本次发送的 Prompt）
+  prompt         String?
+  promptName     String?
 }
 
 model Prompt {

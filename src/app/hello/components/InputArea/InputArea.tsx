@@ -20,7 +20,6 @@ import { useTheme } from '../../../contexts/ThemeContext';
 import CustomizeAIDialog from '../Dialogs/CustomizeAIDialog';
 import PromptSelectionDialog from './PromptSelectionDialog';
 
-// 定义接口
 interface InputAreaProps {
   onSendMessage: (message: string, files: File[], activePrompt?: Prompt | null) => void;
 }
@@ -35,32 +34,31 @@ interface Prompt {
 }
 
 const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
-  // 状态管理
   const { theme } = useTheme();
+
   const [inputValue, setInputValue] = useState('');
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [isPromptSelectionOpen, setIsPromptSelectionOpen] = useState(false);
   const [isCustomizeDialogOpen, setIsCustomizeDialogOpen] = useState(false);
+  // activePrompt 不会在发送消息后自动清除，只在用户点击叉号时清除
   const [activePrompt, setActivePrompt] = useState<Prompt | null>(null);
-  
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dragCounter = useRef(0);
 
-  // 处理发送消息
+  // 发送消息时只清除输入框和文件，不清除 activePrompt
   const handleSend = () => {
     if (inputValue.trim() || selectedFiles.length > 0) {
       onSendMessage(inputValue, selectedFiles, activePrompt);
       setInputValue('');
       setSelectedFiles([]);
-      setActivePrompt(null); // 发送后清除当前prompt
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
     }
   };
 
-  // 处理按键事件
   const handleKeyPress = (event: React.KeyboardEvent<HTMLDivElement>) => {
     if (event.key === 'Enter' && !event.shiftKey) {
       event.preventDefault();
@@ -68,7 +66,6 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
     }
   };
 
-  // 文件处理相关函数
   const validateFiles = (files: File[]) => {
     return files.filter(file => {
       if (file.size > 10 * 1024 * 1024) {
@@ -95,7 +92,6 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
     setSelectedFiles(prev => prev.filter((_, i) => i !== index));
   };
 
-  // 拖拽相关函数
   const handleDragEnter = (event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault();
     event.stopPropagation();
@@ -122,7 +118,6 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
     event.stopPropagation();
     setIsDragging(false);
     dragCounter.current = 0;
-
     const files = Array.from(event.dataTransfer.files);
     if (files.length > 0) {
       const validFiles = validateFiles(files);
@@ -130,11 +125,11 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
     }
   };
 
-  // 提示词相关函数
+  // 当用户选择一个 Prompt 后，设置 activePrompt，但不清除它（除非用户手动取消）
   const handlePromptSelect = (selectedPrompt: Prompt) => {
     setActivePrompt(selectedPrompt);
     setIsPromptSelectionOpen(false);
-    // 如果当前输入框有内容，立即发送
+    // 如果输入框有内容或有文件，则可以立即发送一次消息，但仍保持 activePrompt
     if (inputValue.trim() || selectedFiles.length > 0) {
       onSendMessage(inputValue, selectedFiles, selectedPrompt);
       setInputValue('');
@@ -145,6 +140,7 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
     }
   };
 
+  // 当用户点击叉号时，清除 activePrompt，从而使后续发送不再附带该提示词
   const handleClearPrompt = () => {
     setActivePrompt(null);
   };
@@ -154,7 +150,6 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
     setIsCustomizeDialogOpen(true);
   };
 
-  // 文件图标渲染函数
   const getFileIcon = (fileType: string) => {
     const iconStyle = {
       fontSize: '16px',
@@ -172,13 +167,8 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
   };
 
   return (
-    <Box sx={{ 
-      p: 2,
-      display: 'flex',
-      flexDirection: 'column',
-      gap: 1,
-    }}>
-      {/* Active Prompt Indicator */}
+    <Box sx={{ p: 2, display: 'flex', flexDirection: 'column', gap: 1 }}>
+      {/* 如果有 activePrompt，就显示提示词的 Chip */}
       {activePrompt && (
         <Box
           sx={{
@@ -186,7 +176,7 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
             alignItems: 'center',
             justifyContent: 'center',
             gap: 1,
-            mb: 1
+            mb: 1,
           }}
         >
           <Chip
@@ -202,30 +192,20 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
             deleteIcon={<CancelIcon />}
             sx={{
               bgcolor: alpha(theme.palette.primary.main, 0.1),
-              '& .MuiChip-label': {
-                display: 'flex',
-                alignItems: 'center',
-              }
+              '& .MuiChip-label': { display: 'flex', alignItems: 'center' },
             }}
           />
         </Box>
       )}
 
-      <Box 
-        sx={{ 
-          display: 'flex',
-          alignItems: 'flex-end',
-          justifyContent: 'center',
-          position: 'relative',
-        }}
-      >
-        <Box 
+      <Box sx={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'center', position: 'relative' }}>
+        <Box
           onDragEnter={handleDragEnter}
           onDragLeave={handleDragLeave}
           onDragOver={handleDragOver}
           onDrop={handleDrop}
-          sx={{ 
-            display: 'flex', 
+          sx={{
+            display: 'flex',
             flexDirection: 'column',
             alignItems: 'stretch',
             backgroundColor: theme.palette.background.paper,
@@ -233,9 +213,7 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
             padding: '8px 16px',
             width: '70%',
             boxShadow: '0 2px 10px rgba(0, 0, 0, 0.1)',
-            border: isDragging 
-              ? `2px dashed ${theme.palette.primary.main}`
-              : `1px solid ${theme.palette.divider}`,
+            border: isDragging ? `2px dashed ${theme.palette.primary.main}` : `1px solid ${theme.palette.divider}`,
             transition: 'all 0.2s ease',
             position: 'relative',
           }}
@@ -259,15 +237,7 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
                 transition: 'all 0.2s ease',
               }}
             >
-              <Box sx={{ 
-                color: theme.palette.primary.main,
-                fontWeight: 'bold',
-                fontSize: '1.1rem',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                gap: 1,
-              }}>
+              <Box sx={{ color: theme.palette.primary.main, fontWeight: 'bold', fontSize: '1.1rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
                 <AttachFileIcon sx={{ fontSize: 32 }} />
                 松开鼠标上传文件
               </Box>
@@ -275,46 +245,17 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
           )}
 
           {selectedFiles.length > 0 && (
-            <Box sx={{ 
-              display: 'flex',
-              flexWrap: 'wrap',
-              gap: '4px',
-              padding: '4px 8px',
-              marginBottom: '4px',
-              ml: '40px',
-            }}>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: '4px', padding: '4px 8px', marginBottom: '4px', ml: '40px' }}>
               {selectedFiles.map((file, index) => (
                 <Box
                   key={`${file.name}-${index}`}
-                  sx={{ 
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                    padding: '4px 8px',
-                    backgroundColor: theme.palette.action.hover,
-                    borderRadius: '4px',
-                    maxWidth: 'fit-content',
-                  }}
+                  sx={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 8px', backgroundColor: theme.palette.action.hover, borderRadius: '4px', maxWidth: 'fit-content' }}
                 >
                   {getFileIcon(file.type)}
-                  <span style={{ 
-                    fontSize: '0.875rem',
-                    maxWidth: '200px',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                  }}>
+                  <span style={{ fontSize: '0.875rem', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {file.name}
                   </span>
-                  <IconButton
-                    size="small"
-                    onClick={() => handleRemoveFile(index)}
-                    sx={{ 
-                      padding: '2px',
-                      marginLeft: '2px',
-                      '&:hover': { backgroundColor: 'rgba(0,0,0,0.04)' }
-                    }}
-                  >
+                  <IconButton size="small" onClick={() => handleRemoveFile(index)} sx={{ padding: '2px', marginLeft: '2px', '&:hover': { backgroundColor: 'rgba(0,0,0,0.04)' } }}>
                     <CloseIcon sx={{ fontSize: 14 }} />
                   </IconButton>
                 </Box>
@@ -322,34 +263,15 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
             </Box>
           )}
 
-          <Box sx={{ 
-            display: 'flex', 
-            alignItems: 'center',
-            position: 'relative',
-            zIndex: 2,
-          }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', position: 'relative', zIndex: 2 }}>
             <Tooltip title="上传文件" placement="top">
-              <IconButton 
-                onClick={handleAttachClick}
-                sx={{ 
-                  color: theme.palette.primary.main,
-                  padding: '8px',
-                  '&:hover': { backgroundColor: 'transparent' }
-                }}
-              >
+              <IconButton onClick={handleAttachClick} sx={{ color: theme.palette.primary.main, padding: '8px', '&:hover': { backgroundColor: 'transparent' } }}>
                 <AttachFileIcon />
               </IconButton>
             </Tooltip>
 
             <Tooltip title="选择提示词" placement="top">
-              <IconButton 
-                onClick={() => setIsPromptSelectionOpen(true)}
-                sx={{ 
-                  color: theme.palette.primary.main,
-                  padding: '8px',
-                  '&:hover': { backgroundColor: 'transparent' }
-                }}
-              >
+              <IconButton onClick={() => setIsPromptSelectionOpen(true)} sx={{ color: theme.palette.primary.main, padding: '8px', '&:hover': { backgroundColor: 'transparent' } }}>
                 <MagicWandIcon />
               </IconButton>
             </Tooltip>
@@ -362,9 +284,7 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
               onKeyPress={handleKeyPress}
               InputProps={{
                 disableUnderline: true,
-                style: { 
-                  color: theme.palette.text.primary,
-                },
+                style: { color: theme.palette.text.primary },
               }}
               placeholder={selectedFiles.length > 0 ? "添加消息描述..." : "输入消息..."}
               multiline
@@ -373,40 +293,20 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
                 flexGrow: 1,
                 '& .MuiInputBase-input': {
                   padding: '12px 8px',
-                  '&::placeholder': {
-                    color: theme.palette.text.secondary,
-                    opacity: 0.7,
-                  },
+                  '&::placeholder': { color: theme.palette.text.secondary, opacity: 0.7 },
                 },
-                '& .MuiInputBase-root': {
-                  backgroundColor: 'transparent',
-                  alignItems: 'center',
-                },
+                '& .MuiInputBase-root': { backgroundColor: 'transparent', alignItems: 'center' },
               }}
             />
 
-            <IconButton 
-              onClick={handleSend}
-              sx={{ 
-                color: theme.palette.primary.main,
-                padding: '8px',
-                '&:hover': { backgroundColor: 'transparent' }
-              }}
-            >
+            <IconButton onClick={handleSend} sx={{ color: theme.palette.primary.main, padding: '8px', '&:hover': { backgroundColor: 'transparent' } }}>
               <SendIcon />
             </IconButton>
           </Box>
         </Box>
       </Box>
 
-      <input
-        type="file"
-        ref={fileInputRef}
-        onChange={handleFileSelect}
-        style={{ display: 'none' }}
-        accept="image/*,.pdf,.doc,.docx,.txt"
-        multiple
-      />
+      <input type="file" ref={fileInputRef} onChange={handleFileSelect} style={{ display: 'none' }} accept="image/*,.pdf,.doc,.docx,.txt" multiple />
 
       {isPromptSelectionOpen && (
         <PromptSelectionDialog
@@ -418,10 +318,7 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
       )}
 
       {isCustomizeDialogOpen && (
-        <CustomizeAIDialog
-          open={isCustomizeDialogOpen}
-          onClose={() => setIsCustomizeDialogOpen(false)}
-        />
+        <CustomizeAIDialog open={isCustomizeDialogOpen} onClose={() => setIsCustomizeDialogOpen(false)} />
       )}
     </Box>
   );
