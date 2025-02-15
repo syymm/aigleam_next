@@ -3,20 +3,17 @@ import OpenAI from 'openai';
 import type { ChatCompletionMessageParam } from 'openai/resources/chat/completions';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUserId } from '@/lib/auth';
+import { encoding_for_model, TiktokenModel } from 'tiktoken';
 
-// 配置 OpenAI
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+// 如果 ChatCompletionMessageParam 里没有 name，可以在本地扩展：
+type ExtendedChatCompletionMessageParam = ChatCompletionMessageParam & {
+  name?: string;
+};
 
-export const runtime = 'nodejs';
-export const dynamic = 'force-dynamic';
+// 配置常量
+const MAX_CONTEXT_MESSAGES = 10;
+const MAX_TOKENS = 4000;
 
-// 定义上下文与 token 的粗略限制
-const MAX_CONTEXT_MESSAGES = 10; // 保留最近的10条消息
-const MAX_TOKENS = 4000;         // 最多 4000 tokens (非常粗略)
-
-// 通过文件后缀或 MIME 判断文件类型
 const SUPPORTED_EXTENSIONS = {
   images: ['jpg', 'jpeg', 'png', 'gif', 'webp'] as string[],
   texts: ['txt', 'md', 'csv', 'json', 'js', 'html', 'css', 'xml', 'yaml', 'yml'] as string[],
@@ -53,104 +50,136 @@ const SUPPORTED_MIMES = {
   ]),
 };
 
-// 粗略估算 token 数（平均每 4 个字符 1 个 token）
-function estimateTokenCount(text: string): number {
-  return Math.ceil(text.length / 4);
-}
-
-// 判断文件类型
 function getFileType(file: File): 'image' | 'text' | 'document' | 'unknown' {
   const extension = file.name.split('.').pop()?.toLowerCase() || '';
 
-  if (SUPPORTED_EXTENSIONS.images.includes(extension)) {
-    return 'image';
-  }
-  if (SUPPORTED_EXTENSIONS.texts.includes(extension)) {
-    return 'text';
-  }
-  if (SUPPORTED_EXTENSIONS.documents.includes(extension)) {
-    return 'document';
-  }
+  if (SUPPORTED_EXTENSIONS.images.includes(extension)) return 'image';
+  if (SUPPORTED_EXTENSIONS.texts.includes(extension)) return 'text';
+  if (SUPPORTED_EXTENSIONS.documents.includes(extension)) return 'document';
 
-  if (SUPPORTED_MIMES.images.has(file.type)) {
-    return 'image';
-  }
-  if (SUPPORTED_MIMES.texts.has(file.type)) {
-    return 'text';
-  }
-  if (SUPPORTED_MIMES.documents.has(file.type)) {
-    return 'document';
-  }
+  if (SUPPORTED_MIMES.images.has(file.type)) return 'image';
+  if (SUPPORTED_MIMES.texts.has(file.type)) return 'text';
+  if (SUPPORTED_MIMES.documents.has(file.type)) return 'document';
 
   return 'unknown';
 }
 
-// 获取最近的对话历史 (最多 MAX_CONTEXT_MESSAGES 条)
-async function getConversationHistory(
-  conversationId: string
-): Promise<ChatCompletionMessageParam[]> {
+// 从数据库中获取对话历史
+async function getConversationHistory(conversationId: string): Promise<ExtendedChatCompletionMessageParam[]> {
   const messages = await prisma.message.findMany({
     where: { conversationId },
     orderBy: { createdAt: 'desc' },
     take: MAX_CONTEXT_MESSAGES,
-    select: {
-      content: true,
-      isUser: true,
-    },
+    select: { content: true, isUser: true },
   });
-  // 反转为正序
   messages.reverse();
-
   return messages.map((m) => ({
     role: m.isUser ? 'user' : 'assistant',
-    content: m.content || '',
+    // 如果数据库里 content 不一定是 string，则做判断转换：
+    content: typeof m.content === 'string' ? m.content : JSON.stringify(m.content),
   }));
 }
 
-// 裁剪上下文，避免超过 token 限制
-function trimContextToFitTokenLimit(
-  messages: ChatCompletionMessageParam[],
-  newMessageTokens: number
-): ChatCompletionMessageParam[] {
-  let totalTokens = newMessageTokens;
-  const result: ChatCompletionMessageParam[] = [];
+/**
+ * 安全获取 tiktoken 的 encoding
+ * 如果传入的 model 不在 TiktokenModel 范围内，则 fallback 到 'gpt-3.5-turbo'
+ */
+function getSafeEncoding(model: string) {
+  const knownModels: TiktokenModel[] = [
+    'gpt-3.5-turbo',
+    'gpt-3.5-turbo-0301',
+    'gpt-4',
+    'gpt-4-0314',
+    'gpt-4-32k',
+    'gpt-4-32k-0314',
+    // ... 其它你需要支持的模型
+  ];
+  if (knownModels.includes(model as TiktokenModel)) {
+    return encoding_for_model(model as TiktokenModel);
+  } else {
+    return encoding_for_model('gpt-3.5-turbo');
+  }
+}
 
-  // 从最后一条往前遍历
-  for (let i = messages.length - 1; i >= 0; i--) {
-    const msg = messages[i]!; // 非空断言
-    const contentStr = typeof msg.content === 'string' ? msg.content : '';
-    const msgTokens = estimateTokenCount(contentStr);
-    if (totalTokens + msgTokens <= MAX_TOKENS) {
-      result.unshift(msg);
-      totalTokens += msgTokens;
-    } else {
-      break;
+/**
+ * 用 tiktoken 计算消息总 Token 数
+ * 如果消息内容不是 string，则先转成 string 再 encode
+ */
+function countChatTokens(messages: ExtendedChatCompletionMessageParam[], model: string): number {
+  const encoding = getSafeEncoding(model);
+
+  let tokensPerMessage = 4;
+  let tokensPerName = -1;
+  if (model.startsWith('gpt-4')) {
+    tokensPerMessage = 3;
+    tokensPerName = 1;
+  }
+
+  let totalTokens = 0;
+  for (const msg of messages) {
+    totalTokens += tokensPerMessage;
+    const contentStr = typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content);
+    totalTokens += encoding.encode(contentStr).length;
+    if (msg.name) {
+      totalTokens += tokensPerName;
     }
   }
-  return result;
+
+  // 回复结尾额外加上 3 tokens
+  totalTokens += 3;
+
+  encoding.free();
+  return totalTokens;
+}
+
+/**
+ * 组合 systemPrompt + 历史消息 + 新用户消息，并在超过上限时裁剪旧消息
+ */
+function buildAndTrimMessages(
+  systemPrompt: string | null,
+  conversationHistory: ExtendedChatCompletionMessageParam[],
+  userMessage: string,
+  model: string,
+  maxTokens: number
+): ExtendedChatCompletionMessageParam[] {
+  const built: ExtendedChatCompletionMessageParam[] = [];
+
+  if (systemPrompt) {
+    built.push({ role: 'system', content: systemPrompt });
+  }
+  built.push(...conversationHistory);
+  built.push({ role: 'user', content: userMessage });
+
+  let totalTokens = countChatTokens(built, model);
+  if (totalTokens <= maxTokens) return built;
+
+  // 超出上限时，从最早的历史消息开始删除（保留 systemPrompt 和最新消息）
+  let startIndex = systemPrompt ? 1 : 0;
+  while (startIndex < built.length - 1 && totalTokens > maxTokens) {
+    built.splice(startIndex, 1);
+    totalTokens = countChatTokens(built, model);
+  }
+  return built;
 }
 
 export async function POST(request: Request) {
   try {
-    // 验证用户是否登录
     const userId = await getCurrentUserId();
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // 解析 formData
     const formData = await request.formData();
-    const message = formData.get('message') as string;
-    const model = (formData.get('model') as string) || 'gpt-4-turbo-preview';
+    const message = (formData.get('message') as string) || '';
+    const model = (formData.get('model') as string) || 'gpt-3.5-turbo';
     const conversationId = formData.get('conversationId') as string;
 
-    // 解析 Prompt（如果前端传了）
     const promptData = formData.get('prompt');
     const prompt = promptData ? JSON.parse(promptData.toString()) : null;
 
-    // 收集上传的文件
+    // 收集上传文件
     const files: File[] = [];
-    for (let i = 0; ; i++) {
+    for (let i = 0;; i++) {
       const file = formData.get(`file${i}`) as File | null;
       if (!file) break;
       files.push(file);
@@ -158,57 +187,29 @@ export async function POST(request: Request) {
 
     // 查找会话
     const conversation = await prisma.conversation.findUnique({
-      where: {
-        id: conversationId,
-        userId,
-      },
+      where: { id: conversationId, userId },
     });
     if (!conversation) {
       return NextResponse.json({ error: 'Conversation not found' }, { status: 404 });
     }
 
-    // 更新 conversation.systemPrompt，无论 prompt 是否存在
+    // 更新 systemPrompt
     await prisma.conversation.update({
       where: { id: conversationId },
       data: { systemPrompt: prompt?.content ?? null },
     });
 
-    // 重新读取，拿到最新 systemPrompt
-    const updatedConv = await prisma.conversation.findUnique({
-      where: { id: conversationId },
-    });
+    // 获取最新 systemPrompt
+    const updatedConv = await prisma.conversation.findUnique({ where: { id: conversationId } });
     const systemPrompt = updatedConv?.systemPrompt || null;
 
     // 获取对话历史
     const conversationHistory = await getConversationHistory(conversationId);
 
-    // 计算当前消息的 tokens
-    const newMessageTokens = estimateTokenCount(message);
+    // 合并 systemPrompt、历史消息和当前用户消息，并裁剪 token
+    let messages = buildAndTrimMessages(systemPrompt, conversationHistory, message, model, MAX_TOKENS);
 
-    // 裁剪历史
-    const trimmedHistory = trimContextToFitTokenLimit(conversationHistory, newMessageTokens);
-
-    // 准备要发给 OpenAI 的 messages 数组
-    const messages: ChatCompletionMessageParam[] = [];
-
-    // 若有 systemPrompt，就在最前面插入 system 消息
-    if (systemPrompt) {
-      messages.push({
-        role: 'system',
-        content: systemPrompt,
-      });
-    }
-
-    // 加入裁剪后的历史消息
-    messages.push(...trimmedHistory);
-
-    // 再加上用户本次输入
-    messages.push({
-      role: 'user',
-      content: message,
-    });
-
-    // 数据库里创建一条用户消息
+    // 数据库记录用户输入
     await prisma.message.create({
       data: {
         content: message,
@@ -219,9 +220,8 @@ export async function POST(request: Request) {
       },
     });
 
-    // 把文件信息拼接到最后一条用户消息（可选）
+    // 处理上传文件，将相关信息追加到用户消息中
     let appendedFileInfo = '';
-
     for (const file of files) {
       const bytes = await file.arrayBuffer();
       const buffer = Buffer.from(bytes);
@@ -229,14 +229,11 @@ export async function POST(request: Request) {
 
       switch (fileType) {
         case 'image': {
-          // 图片转换为 base64
           const base64Image = buffer.toString('base64');
           const mimeType = file.type || 'image/jpeg';
           const imageUrl = `data:${mimeType};base64,${base64Image}`;
-
           appendedFileInfo += `\n[已上传图片: ${file.name}]`;
 
-          // 同时在数据库记录
           await prisma.message.create({
             data: {
               content: `已上传图片：${file.name}`,
@@ -271,6 +268,8 @@ export async function POST(request: Request) {
         }
         case 'document': {
           try {
+            // 上传到 OpenAI（如果需要）
+            const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
             const uploadFile = new File([buffer], file.name, {
               type: file.type || 'application/octet-stream',
             });
@@ -278,7 +277,6 @@ export async function POST(request: Request) {
               file: uploadFile,
               purpose: 'assistants',
             });
-
             appendedFileInfo += `\n[已上传文档: ${file.name}, openai_file_id=${fileUpload.id}]`;
 
             await prisma.message.create({
@@ -294,7 +292,7 @@ export async function POST(request: Request) {
               },
             });
           } catch (error) {
-            console.error('File upload error:', error);
+            console.error('文件上传失败:', error);
             appendedFileInfo += `\n[文件上传失败: ${file.name}]`;
 
             await prisma.message.create({
@@ -328,16 +326,35 @@ export async function POST(request: Request) {
       }
     }
 
-    // 将文件信息追加到最后一条用户消息（确保数组非空）
-    const lastIndex = messages.length - 1;
-    if (lastIndex >= 0) {
-      const lastMsg = messages[lastIndex]!;
-      if (lastMsg.role === 'user' && appendedFileInfo) {
-        lastMsg.content += appendedFileInfo;
+    // 将文件信息追加到最后一条用户消息
+    if (appendedFileInfo && messages.length > 0) {
+      const lastMessage = messages[messages.length - 1];
+      if (lastMessage && lastMessage.role === 'user') {
+        // 如果 content 为 undefined 则赋予空字符串作为默认值
+        const oldContent =
+          typeof lastMessage.content === 'string'
+            ? lastMessage.content
+            : JSON.stringify(lastMessage.content ?? '');
+        lastMessage.content = oldContent + appendedFileInfo;
       }
     }
 
-    // 调用 OpenAI (流式接口)
+    // 追加文件信息后可能超出 token 限制，再次裁剪（以最后一条用户消息为准）
+    if (messages.length > 0) {
+      const lastUserMsg = messages[messages.length - 1]?.role === 'user'
+        ? messages[messages.length - 1]
+        : undefined;
+      if (lastUserMsg) {
+        const lastContentStr =
+          typeof lastUserMsg.content === 'string'
+            ? lastUserMsg.content
+            : JSON.stringify(lastUserMsg.content ?? '');
+        messages = buildAndTrimMessages(systemPrompt, conversationHistory, lastContentStr, model, MAX_TOKENS);
+      }
+    }
+
+    // 调用 OpenAI，流式返回响应
+    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
     const response = await openai.chat.completions.create({
       model,
       messages,
@@ -347,13 +364,16 @@ export async function POST(request: Request) {
 
     let fullResponse = '';
 
-    // 构建流式响应返回给前端
     const streamResponse = new Response(
       new ReadableStream({
         async start(controller) {
           try {
             for await (const chunk of response) {
-              const content = chunk.choices[0]?.delta?.content || '';
+              // 注意：content 可能不是 string，这里统一转为 string
+              const content =
+                typeof chunk.choices[0]?.delta?.content === 'string'
+                  ? chunk.choices[0]?.delta?.content
+                  : '';
               if (content) {
                 controller.enqueue(new TextEncoder().encode(content));
                 fullResponse += content;
@@ -379,7 +399,7 @@ export async function POST(request: Request) {
 
             controller.close();
           } catch (err) {
-            console.error('Stream processing error:', err);
+            console.error('处理流错误:', err);
             controller.error(err);
           }
         },
