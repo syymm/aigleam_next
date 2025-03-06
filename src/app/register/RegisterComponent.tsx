@@ -166,7 +166,7 @@ const RegisterComponent: React.FC = () => {
   return (
     <div className="register-component">
       <div className="register-image">
-        <Image src="/image/2.png" alt="RegisterImage" fill />
+        <Image src="/image/30.png" alt="RegisterImage" fill />
       </div>
       <div className="register-form">
         <h1 className="register-title">Register Now✍️</h1> 

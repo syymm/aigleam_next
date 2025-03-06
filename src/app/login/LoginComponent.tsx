@@ -189,7 +189,7 @@ const LoginComponent: React.FC = () => {
         </div>
         <div className="login-image">
           {<Image
-            src="/image/1.png"
+            src="/image/31.png"
             alt="loginImage"
             fill
           />}
