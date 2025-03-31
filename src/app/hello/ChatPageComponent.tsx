@@ -80,7 +80,7 @@ const ChatPageComponent: React.FC = () => {
     setMessagesMap(prevMap => ({...prevMap, [tempId]: []}));
   };
 
-  const handleSendMessage = async (content: string, files: File[], activePrompt?: Prompt | null) => {
+  const handleSendMessage = async (content: string, files: File[]) => {
     if (!currentConversationId || (!content.trim() && files.length === 0)) return;
     
     try {
@@ -114,12 +114,6 @@ const ChatPageComponent: React.FC = () => {
       formData.append('model', selectedModel);
       formData.append('conversationId', actualConversationId);
       
-      // 添加 prompt
-      if (activePrompt) {
-        console.log('Adding prompt to request:', activePrompt); // debug log
-        formData.append('prompt', JSON.stringify(activePrompt));
-      }
-      
       // 添加文件
       files.forEach((file, index) => {
         formData.append(`file${index}`, file);
@@ -130,10 +124,6 @@ const ChatPageComponent: React.FC = () => {
         id: Date.now().toString(),
         content,
         isUser: true,
-        prompt: activePrompt ? {
-          name: activePrompt.name,
-          content: activePrompt.content
-        } : undefined
       };
 
       const fileMessages = files.map(file => ({
@@ -142,10 +132,6 @@ const ChatPageComponent: React.FC = () => {
         isUser: true,
         fileName: file.name,
         fileType: file.type,
-        prompt: activePrompt ? {
-          name: activePrompt.name,
-          content: activePrompt.content
-        } : undefined
       }));
 
       setMessagesMap(prevMap => ({
@@ -172,10 +158,6 @@ const ChatPageComponent: React.FC = () => {
         id: `ai-${Date.now()}`,
         content: '',
         isUser: false,
-        prompt: activePrompt ? {
-          name: activePrompt.name,
-          content: activePrompt.content
-        } : undefined
       };
 
       setMessagesMap(prevMap => ({

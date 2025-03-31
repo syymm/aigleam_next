@@ -16,10 +16,6 @@ export interface Message {
   fileName?: string;
   fileType?: string;
   fileUrl?: string;
-  prompt?: {
-    name: string;
-    content: string;
-  };
 }
 
 // 对话接口
@@ -63,15 +59,7 @@ export interface ChatAreaProps {
 
 // InputArea组件的Props接口
 export interface InputAreaProps {
-  onSendMessage: (content: string, files?: File[], activePrompt?: Prompt | null) => void;
-}
-
-// PromptSelectionDialog组件的Props接口
-export interface PromptSelectionDialogProps {
-  open: boolean;
-  onClose: () => void;
-  onSelect: (prompt: Prompt) => void;
-  onOpenCustomize: () => void;
+  onSendMessage: (content: string, files?: File[]) => void;
 }
 
 // WelcomeScreen组件的Props接口

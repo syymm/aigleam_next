@@ -17,20 +17,9 @@ import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
 import MagicWandIcon from '@mui/icons-material/AutoFixHigh';
 import CancelIcon from '@mui/icons-material/Cancel';
 import { useTheme } from '../../../contexts/ThemeContext';
-import CustomizeAIDialog from '../Dialogs/CustomizeAIDialog';
-import PromptSelectionDialog from './PromptSelectionDialog';
 
 interface InputAreaProps {
-  onSendMessage: (message: string, files: File[], activePrompt?: Prompt | null) => void;
-}
-
-interface Prompt {
-  id?: string;
-  name: string;
-  content: string;
-  userId?: number;
-  createdAt?: string;
-  updatedAt?: string;
+  onSendMessage: (message: string, files: File[]) => void;
 }
 
 const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
@@ -39,18 +28,13 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
   const [inputValue, setInputValue] = useState('');
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [isDragging, setIsDragging] = useState(false);
-  const [isPromptSelectionOpen, setIsPromptSelectionOpen] = useState(false);
-  const [isCustomizeDialogOpen, setIsCustomizeDialogOpen] = useState(false);
-  // activePrompt 不会在发送消息后自动清除，只在用户点击叉号时清除
-  const [activePrompt, setActivePrompt] = useState<Prompt | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dragCounter = useRef(0);
 
-  // 发送消息时只清除输入框和文件，不清除 activePrompt
   const handleSend = () => {
     if (inputValue.trim() || selectedFiles.length > 0) {
-      onSendMessage(inputValue, selectedFiles, activePrompt);
+      onSendMessage(inputValue, selectedFiles);
       setInputValue('');
       setSelectedFiles([]);
       if (fileInputRef.current) {
@@ -125,31 +109,6 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
     }
   };
 
-  // 当用户选择一个 Prompt 后，设置 activePrompt，但不清除它（除非用户手动取消）
-  const handlePromptSelect = (selectedPrompt: Prompt) => {
-    setActivePrompt(selectedPrompt);
-    setIsPromptSelectionOpen(false);
-    // 如果输入框有内容或有文件，则可以立即发送一次消息，但仍保持 activePrompt
-    if (inputValue.trim() || selectedFiles.length > 0) {
-      onSendMessage(inputValue, selectedFiles, selectedPrompt);
-      setInputValue('');
-      setSelectedFiles([]);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
-    }
-  };
-
-  // 当用户点击叉号时，清除 activePrompt，从而使后续发送不再附带该提示词
-  const handleClearPrompt = () => {
-    setActivePrompt(null);
-  };
-
-  const handleOpenCustomize = () => {
-    setIsPromptSelectionOpen(false);
-    setIsCustomizeDialogOpen(true);
-  };
-
   const getFileIcon = (fileType: string) => {
     const iconStyle = {
       fontSize: '16px',
@@ -168,36 +127,6 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
 
   return (
     <Box sx={{ p: 2, display: 'flex', flexDirection: 'column', gap: 1 }}>
-      {/* 如果有 activePrompt，就显示提示词的 Chip */}
-      {activePrompt && (
-        <Box
-          sx={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 1,
-            mb: 1,
-          }}
-        >
-          <Chip
-            label={
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <MagicWandIcon sx={{ fontSize: 16 }} />
-                <Typography variant="body2">
-                  使用中的提示词: {activePrompt.name}
-                </Typography>
-              </Box>
-            }
-            onDelete={handleClearPrompt}
-            deleteIcon={<CancelIcon />}
-            sx={{
-              bgcolor: alpha(theme.palette.primary.main, 0.1),
-              '& .MuiChip-label': { display: 'flex', alignItems: 'center' },
-            }}
-          />
-        </Box>
-      )}
-
       <Box sx={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'center', position: 'relative' }}>
         <Box
           onDragEnter={handleDragEnter}
@@ -270,12 +199,6 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
               </IconButton>
             </Tooltip>
 
-            <Tooltip title="选择提示词" placement="top">
-              <IconButton onClick={() => setIsPromptSelectionOpen(true)} sx={{ color: theme.palette.primary.main, padding: '8px', '&:hover': { backgroundColor: 'transparent' } }}>
-                <MagicWandIcon />
-              </IconButton>
-            </Tooltip>
-
             <TextField
               fullWidth
               variant="standard"
@@ -307,19 +230,6 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
       </Box>
 
       <input type="file" ref={fileInputRef} onChange={handleFileSelect} style={{ display: 'none' }} accept="image/*,.pdf,.doc,.docx,.txt" multiple />
-
-      {isPromptSelectionOpen && (
-        <PromptSelectionDialog
-          open={isPromptSelectionOpen}
-          onClose={() => setIsPromptSelectionOpen(false)}
-          onSelect={handlePromptSelect}
-          onOpenCustomize={handleOpenCustomize}
-        />
-      )}
-
-      {isCustomizeDialogOpen && (
-        <CustomizeAIDialog open={isCustomizeDialogOpen} onClose={() => setIsCustomizeDialogOpen(false)} />
-      )}
     </Box>
   );
 };
