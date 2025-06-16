@@ -1,21 +1,38 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
-import jwt from 'jsonwebtoken';
+import { AuthService } from '@/lib/services/auth.service';
 
-export async function GET(req: NextRequest) {
-  const authToken = cookies().get('authToken')?.value;
+interface AuthCheckResponse {
+  authenticated: boolean;
+  user?: {
+    id: number;
+    username: string;
+  };
+}
 
-  if (!authToken) {
-    console.log('No authToken found in /api/check-auth');
-    return NextResponse.json({ authenticated: false }, { status: 401 });
-  }
-
+export async function GET(req: NextRequest): Promise<NextResponse> {
   try {
-    jwt.verify(authToken, process.env.JWT_SECRET!);
-    console.log('Valid authToken found in /api/check-auth');
-    return NextResponse.json({ authenticated: true }, { status: 200 });
+    const user = await AuthService.getCurrentUser();
+
+    if (!user) {
+      const response: AuthCheckResponse = { authenticated: false };
+      return NextResponse.json(response, { status: 401 });
+    }
+
+    const response: AuthCheckResponse = {
+      authenticated: true,
+      user: {
+        id: user.id,
+        username: user.username,
+      },
+    };
+
+    return NextResponse.json(response, { status: 200 });
   } catch (error) {
-    console.log('Invalid authToken in /api/check-auth');
-    return NextResponse.json({ authenticated: false }, { status: 401 });
+    if (process.env.NODE_ENV === 'development') {
+      console.error('Auth check error:', error);
+    }
+
+    const response: AuthCheckResponse = { authenticated: false };
+    return NextResponse.json(response, { status: 401 });
   }
 }

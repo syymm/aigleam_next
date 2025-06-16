@@ -1,48 +1,46 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
-import { prisma } from '@/lib/prisma';
-import bcrypt from 'bcrypt';
-import jwt from 'jsonwebtoken';
+import { AuthService } from '@/lib/services/auth.service';
+import { validateLoginInput, ValidationError, sanitizeInput } from '@/lib/utils/validation';
+import { LoginRequest, LoginResponse, AuthError } from '@/lib/types/auth';
+import { handleApiError, logError } from '@/lib/utils/error-handler';
 
-export async function POST(req: NextRequest) {
+export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
-    const { username, password, rememberMe } = await req.json();
+    // Parse and validate request body
+    const body: LoginRequest = await req.json();
+    
+    // Sanitize input
+    const sanitizedData: LoginRequest = {
+      username: sanitizeInput(body.username),
+      password: body.password,
+      rememberMe: body.rememberMe || false,
+    };
 
-    // 使用 Prisma 客户端查询用户
-    const user = await prisma.user.findUnique({
-      where: { username },
-    });
+    // Validate input
+    validateLoginInput(sanitizedData);
 
-    if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
-    }
+    // Authenticate user
+    const user = await AuthService.authenticateUser(sanitizedData);
 
-    // 比较密码
-    const isValidPassword = await bcrypt.compare(password, user.password);
+    // Generate token
+    const token = AuthService.generateToken(user, sanitizedData.rememberMe);
 
-    if (!isValidPassword) {
-      return NextResponse.json({ error: 'Invalid password' }, { status: 401 });
-    }
+    // Set auth cookie
+    AuthService.setAuthCookie(token, sanitizedData.rememberMe);
 
-    // 生成 JWT token
-    const token = jwt.sign(
-      { userId: user.id, username: user.username },
-      process.env.JWT_SECRET!,
-      { expiresIn: rememberMe ? '7d' : '24h' }
-    );
+    // Prepare response
+    const response: LoginResponse = {
+      message: 'Login successful',
+      user: {
+        id: user.id,
+        username: user.username,
+      },
+    };
 
-    // 设置 cookie
-    cookies().set('authToken', token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: rememberMe ? 7 * 24 * 60 * 60 : 24 * 60 * 60, // 7 days or 24 hours
-      path: '/',
-    });
+    return NextResponse.json(response, { status: 200 });
 
-    return NextResponse.json({ message: 'Login successful' }, { status: 200 });
   } catch (error) {
-    console.error('Login error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    logError(error, 'POST /api/login');
+    return handleApiError(error);
   }
 }

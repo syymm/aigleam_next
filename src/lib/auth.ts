@@ -1,22 +1,23 @@
-import { cookies } from 'next/headers';
-import jwt from 'jsonwebtoken';
-
-interface JWTPayload {
-  userId: number;
-  username: string;
-}
+import { AuthService } from '@/lib/services/auth.service';
+import { JWTPayload } from '@/lib/types/auth';
 
 export async function getCurrentUserId(): Promise<number | null> {
-  const authToken = cookies().get('authToken')?.value;
-
-  if (!authToken) {
-    return null;
-  }
-
   try {
-    const decoded = jwt.verify(authToken, process.env.JWT_SECRET!) as JWTPayload;
-    return decoded.userId;
+    const user = await AuthService.getCurrentUser();
+    return user?.id || null;
   } catch (error) {
     return null;
   }
+}
+
+export async function getCurrentUser() {
+  return AuthService.getCurrentUser();
+}
+
+export function verifyToken(token: string): JWTPayload {
+  return AuthService.verifyToken(token);
+}
+
+export function getAuthToken(): string | null {
+  return AuthService.getAuthToken();
 }

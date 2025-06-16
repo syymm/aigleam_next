@@ -15,24 +15,17 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Snackbar from '@mui/material/Snackbar';
 import Alert from '@mui/material/Alert';
-
-interface SnackbarState {
-  open: boolean;
-  message: string;
-  severity: 'success' | 'error';
-}
+import CircularProgress from '@mui/material/CircularProgress';
+import { useAuth } from '@/app/hooks/useAuth';
+import { useLoginForm } from '@/app/hooks/useLoginForm';
 
 const LoginComponent: React.FC = () => {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [rememberMe, setRememberMe] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [snackbar, setSnackbar] = useState<SnackbarState>({
-    open: false,
-    message: '',
-    severity: 'success'
-  });
   const router = useRouter();
+  
+  // Custom hooks for auth and form management
+  const { isLoading, error, login, clearError } = useAuth();
+  const { values, errors, isValid, updateField, validateForm } = useLoginForm();
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -52,68 +45,14 @@ const LoginComponent: React.FC = () => {
     },
   });
 
-  const showNotification = (message: string, severity: 'success' | 'error') => {
-    setSnackbar({
-      open: true,
-      message,
-      severity,
-    });
-  };
-
-  const handleSnackbarClose = () => {
-    setSnackbar(prev => ({ ...prev, open: false }));
-  };
-
   const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    // 表单验证
-    if (!username.trim()) {
-      showNotification('请输入邮箱地址', 'error');
+    if (!validateForm()) {
       return;
     }
 
-    if (!password.trim()) {
-      showNotification('请输入密码', 'error');
-      return;
-    }
-
-    try {
-      const response = await fetch('/api/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ username, password, rememberMe }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        router.push('/hello');  // 登录成功直接跳转，不显示 snackbar
-      } else {
-        let errorMessage = '登录失败';
-        
-        switch (data.error) {
-          case 'User not found':
-            errorMessage = '用户不存在';
-            break;
-          case 'Invalid password':
-            errorMessage = '密码错误';
-            break;
-          case 'Internal server error':
-            errorMessage = '服务器错误，请稍后重试';
-            break;
-          default:
-            errorMessage = data.error || '登录失败';
-        }
-        
-        showNotification(errorMessage, 'error');
-      }
-    } catch (error) {
-      console.error('Login error:', error);
-      showNotification('网络错误，请稍后重试', 'error');
-    }
+    await login(values);
   };
 
   const handleClickShowPassword = () => setShowPassword(!showPassword);
@@ -128,21 +67,27 @@ const LoginComponent: React.FC = () => {
               sx={{ bgcolor: 'white', marginTop: '0px', borderRadius: '4px' }}
               label="Email"
               type="email"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
+              value={values.username}
+              onChange={(e) => updateField('username', e.target.value)}
               variant="outlined"
               fullWidth
               margin="normal"
+              error={!!errors.username}
+              helperText={errors.username}
+              disabled={isLoading}
             />
             <TextField
               sx={{ bgcolor: 'white', marginTop: '15px', borderRadius: '4px' }}
               label="Password"
               type={showPassword ? 'text' : 'password'}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              value={values.password}
+              onChange={(e) => updateField('password', e.target.value)}
               variant="outlined"
               fullWidth
               margin="normal"
+              error={!!errors.password}
+              helperText={errors.password}
+              disabled={isLoading}
               InputProps={{
                 endAdornment: (
                   <InputAdornment position="end">
@@ -150,6 +95,7 @@ const LoginComponent: React.FC = () => {
                       aria-label="toggle password visibility"
                       onClick={handleClickShowPassword}
                       edge="end"
+                      disabled={isLoading}
                       style={{ backgroundColor: 'transparent', padding: 0, margin: 'auto 0', top: '50%', transform: 'translateY(-50%)', color: '#666' }}
                     >
                       {showPassword ? <VisibilityOff style={{ fontSize: 24 }} /> : <Visibility style={{ fontSize: 24 }} />}
@@ -163,10 +109,11 @@ const LoginComponent: React.FC = () => {
                 <Checkbox
                   disableRipple
                   id="rememberMeCheckbox"
-                  checked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
+                  checked={values.rememberMe}
+                  onChange={(e) => updateField('rememberMe', e.target.checked)}
                   color="primary"
                   size="small"
+                  disabled={isLoading}
                   style={{ marginLeft: '-10px' }}
                 />
                 记住密码
@@ -178,9 +125,11 @@ const LoginComponent: React.FC = () => {
               variant="contained" 
               color="primary" 
               fullWidth 
-              style={{ marginTop: '20px' }}
+              disabled={isLoading || !isValid}
+              style={{ marginTop: '20px', minHeight: '42px' }}
+              startIcon={isLoading ? <CircularProgress size={20} color="inherit" /> : null}
             >
-              立即登录
+              {isLoading ? '登录中...' : '立即登录'}
             </Button>
           </form>
           <p style={{ marginTop: '20px', textAlign: 'center' }}>
@@ -196,18 +145,18 @@ const LoginComponent: React.FC = () => {
         </div>
 
         <Snackbar
-          open={snackbar.open}
-          autoHideDuration={3000}
-          onClose={handleSnackbarClose}
+          open={!!error}
+          autoHideDuration={5000}
+          onClose={clearError}
           anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
         >
           <Alert
-            onClose={handleSnackbarClose}
-            severity={snackbar.severity}
+            onClose={clearError}
+            severity="error"
             sx={{ width: '100%' }}
             variant="filled"
           >
-            {snackbar.message}
+            {error}
           </Alert>
         </Snackbar>
       </div>
