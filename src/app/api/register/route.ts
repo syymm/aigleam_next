@@ -1,12 +1,16 @@
 import { NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
 import { verificationCodeManager } from '../../utils/verificationCode';
+import { AuthService } from '@/lib/services/auth.service';
 import bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
 
 export async function POST(request: Request) {
   console.log('Received a POST request to /api/register');
+  
+  // 清除可能存在的认证cookie，确保注册后需要重新登录
+  AuthService.clearAuthCookie();
   
   try {
     const { username, verificationCode, password } = await request.json();

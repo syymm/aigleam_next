@@ -1,8 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { Resend } from 'resend';
+import nodemailer from 'nodemailer';
 import { verificationCodeManager } from '../../utils/verificationCode';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: process.env.GMAIL_EMAIL,
+    pass: process.env.GMAIL_APP_PASSWORD,
+  },
+});
 
 verificationCodeManager.setupCleanupTask();
 
@@ -35,11 +41,12 @@ export async function POST(req: NextRequest) {
     console.log(`Stored verification code for ${username}`);
 
     console.log(`Attempting to send email to ${username}`);
-    await resend.emails.send({
-      from: '你的应用 <onboarding@resend.dev>',
+    await transporter.sendMail({
+      from: `"你的应用" <${process.env.GMAIL_EMAIL}>`,
       to: username,
       subject: '你的验证码',
-      html: `<p>你的验证码是: <strong>${verificationCode}</strong></p>`
+      html: `<p>你的验证码是: <strong>${verificationCode}</strong></p>
+             <p>该验证码10分钟内有效，请及时使用。</p>`
     });
     console.log(`Email sent successfully to ${username}`);
 
