@@ -73,13 +73,14 @@ export async function POST(request: Request) {
         );
       }
 
-      // 在验证验证码之前，先检查是否可以使用验证码（防止暴力破解）
-      const canUseCode = verificationCodeManager.canRequestCode(email);
-      if (!canUseCode.allowed) {
+
+      // 检查验证码验证是否被锁定
+      const canVerify = verificationCodeManager.canVerifyCode(email);
+      if (!canVerify.allowed) {
         return NextResponse.json(
           { 
-            error: canUseCode.message || '请求过于频繁，请稍后再试',
-            waitTime: canUseCode.waitTime 
+            error: canVerify.message || '验证失败次数过多，请稍后再试',
+            waitTime: canVerify.waitTime 
           },
           { status: 429 }
         );
