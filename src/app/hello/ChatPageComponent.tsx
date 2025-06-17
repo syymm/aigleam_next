@@ -6,7 +6,6 @@ import TopNav from './components/TopNav/TopNav';
 import Sidebar from './components/Sidebar/Sidebar';
 import ChatArea from './components/ChatArea/ChatArea';
 import InputArea from './components/InputArea/InputArea';
-import WelcomeScreen from './components/WelcomeScreen/WelcomeScreen';
 import { useTheme } from '../contexts/ThemeContext';
 import styles from './styles/ChatPage.module.css';
 import { useRouter } from 'next/navigation';
@@ -64,10 +63,13 @@ const ChatPageComponent: React.FC = () => {
           return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
         });
         setConversations(sortedData);
+        // 直接开始新聊天，跳过欢迎屏幕
         handleStartNewChat();
       }
     } catch (error) {
       console.error('加载会话失败:', error);
+      // 即使加载失败也开始新聊天
+      handleStartNewChat();
     }
   };
 
@@ -333,20 +335,14 @@ const ChatPageComponent: React.FC = () => {
       />
       <Main open={open}>
         <div className={`${styles.mainContent} ${styles[themeMode]}`}>
-          {currentConversationId ? (
-            <>
-              <ChatArea
-                messages={messagesMap[currentConversationId] || []}
-                onBestResponse={handleBestResponse}
-                onErrorResponse={handleErrorResponse}
-                onQuoteReply={handleQuoteReply}
-                isLoading={isLoading}
-              />
-              <InputArea onSendMessage={handleSendMessage} />
-            </>
-          ) : (
-            <WelcomeScreen onStartNewChat={handleStartNewChat} />
-          )}
+          <ChatArea
+            messages={messagesMap[currentConversationId] || []}
+            onBestResponse={handleBestResponse}
+            onErrorResponse={handleErrorResponse}
+            onQuoteReply={handleQuoteReply}
+            isLoading={isLoading}
+          />
+          <InputArea onSendMessage={handleSendMessage} />
         </div>
       </Main>
     </Box>
