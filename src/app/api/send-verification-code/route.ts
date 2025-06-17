@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import nodemailer from 'nodemailer';
 import { verificationCodeManager } from '../../utils/verificationCode';
+import { VerificationCodeRequest, VerificationCodeResponse } from '@/lib/types/api';
+import { ipLimiter } from '@/lib/utils/ip-limiter';
+import { getClientIP } from '@/lib/utils/get-client-ip';
 
 const transporter = nodemailer.createTransport({
   service: 'gmail',
@@ -15,8 +18,21 @@ verificationCodeManager.setupCleanupTask();
 export async function POST(req: NextRequest) {
   console.log('Received request to send verification code');
 
-  const { username } = await req.json();
-  console.log(`Requested verification code for username: ${username}`);
+  // IP限制检查
+  const clientIP = getClientIP(req);
+  const ipCheck = ipLimiter.isAllowed(clientIP);
+  
+  if (!ipCheck.allowed) {
+    console.log(`IP ${clientIP} is rate limited`);
+    const waitMinutes = Math.ceil((ipCheck.waitTime || 0) / (60 * 1000));
+    return NextResponse.json({ 
+      message: `请求过于频繁，请在 ${waitMinutes} 分钟后重试`,
+      waitTime: ipCheck.waitTime 
+    }, { status: 429 });
+  }
+
+  const { username }: VerificationCodeRequest = await req.json();
+  console.log(`Requested verification code for username: ${username} from IP: ${clientIP}`);
 
   if (!username) {
     console.log('Error: Email is required');
@@ -50,7 +66,8 @@ export async function POST(req: NextRequest) {
     });
     console.log(`Email sent successfully to ${username}`);
 
-    return NextResponse.json({ message: '验证码发送成功' });
+    const response: VerificationCodeResponse = { message: '验证码发送成功' };
+    return NextResponse.json(response);
   } catch (error) {
     console.error('发送邮件时出错:', error);
     return NextResponse.json({ message: '发送验证码失败' }, { status: 500 });

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
 import { verificationCodeManager } from '../../utils/verificationCode';
 import { AuthService } from '@/lib/services/auth.service';
+import { RegisterRequest, RegisterResponse } from '@/lib/types/api';
 import bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
@@ -13,13 +14,13 @@ export async function POST(request: Request) {
   AuthService.clearAuthCookie();
   
   try {
-    const { username, verificationCode, password } = await request.json();
+    const { username, verificationCode, password }: RegisterRequest = await request.json();
 
     console.log(`Received registration request for username: ${username}`);
 
     if (!username || !verificationCode || !password) {
       console.log('Error: Missing required fields');
-      return NextResponse.json({ message: 'All fields are required' }, { status: 400 });
+      return NextResponse.json({ message: '请填写所有必填项' }, { status: 400 });
     }
 
     // 验证验证码
@@ -29,7 +30,7 @@ export async function POST(request: Request) {
 
     if (!isCodeValid) {
       console.log(`Error: Invalid or expired verification code for user: ${username}`);
-      return NextResponse.json({ message: 'Invalid or expired verification code' }, { status: 400 });
+      return NextResponse.json({ message: '验证码无效或已过期' }, { status: 400 });
     }
 
     // 检查用户是否已存在
@@ -37,7 +38,7 @@ export async function POST(request: Request) {
     const existingUser = await prisma.user.findUnique({ where: { username } });
     if (existingUser) {
       console.log(`Error: User ${username} already exists`);
-      return NextResponse.json({ message: 'User already exists' }, { status: 400 });
+      return NextResponse.json({ message: '该邮箱已被注册' }, { status: 400 });
     }
 
     // 哈希密码
@@ -54,10 +55,11 @@ export async function POST(request: Request) {
     });
 
     console.log(`User registered successfully: ${newUser.id}`);
-    return NextResponse.json({ message: 'User registered successfully', userId: newUser.id }, { status: 201 });
+    const response: RegisterResponse = { message: '注册成功', userId: newUser.id };
+    return NextResponse.json(response, { status: 201 });
   } catch (error) {
     console.error('Error registering user:', error);
-    return NextResponse.json({ message: 'Error registering user' }, { status: 500 });
+    return NextResponse.json({ message: '注册失败，请稍后重试' }, { status: 500 });
   } finally {
     await prisma.$disconnect();
   }
