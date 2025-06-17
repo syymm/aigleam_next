@@ -86,13 +86,42 @@ export class AuthService {
 
       const payload = this.verifyToken(token);
       
+      // 性能优化：对于认证检查，直接使用token中的信息
+      // 避免不必要的数据库查询
+      return {
+        id: payload.userId,
+        username: payload.username,
+        password: '', // 不需要密码字段用于认证检查
+      };
+    } catch (error) {
+      logError(error, 'AuthService.getCurrentUser');
+      return null;
+    }
+  }
+
+  // 添加一个需要完整用户信息时才查询数据库的方法
+  static async getCurrentUserFromDB(): Promise<AuthUser | null> {
+    try {
+      const token = this.getAuthToken();
+      
+      if (!token) {
+        return null;
+      }
+
+      const payload = this.verifyToken(token);
+      
       const user = await prisma.user.findUnique({
         where: { id: payload.userId },
+        select: {
+          id: true,
+          username: true,
+          password: true,
+        },
       });
 
       return user;
     } catch (error) {
-      logError(error, 'AuthService.getCurrentUser');
+      logError(error, 'AuthService.getCurrentUserFromDB');
       return null;
     }
   }

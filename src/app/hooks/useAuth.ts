@@ -35,6 +35,7 @@ export const useAuth = (): UseAuthReturn => {
       const data = await response.json();
 
       if (response.ok) {
+        // 登录成功后立即跳转，避免等待不必要的检查
         router.push('/hello');
         return true;
       } else {

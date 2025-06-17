@@ -19,10 +19,12 @@ export default function ChatPage() {
           setIsAuthenticated(true);
         } else {
           router.push('/login');
+          return;
         }
       } catch (error) {
         console.error('Auth check failed:', error);
         router.push('/login');
+        return;
       } finally {
         setIsLoading(false);
       }
@@ -31,12 +33,19 @@ export default function ChatPage() {
     checkAuth();
   }, [router]);
 
+  // 如果正在加载，显示聊天界面框架但带加载状态
   if (isLoading) {
-    return <div className={styles.loadingScreen}>正在加载...</div>;
+    return (
+      <ThemeProvider>
+        <div className={styles.chatpage}>
+          <div className={styles.loadingScreen}>正在验证身份...</div>
+        </div>
+      </ThemeProvider>
+    );
   }
 
   if (!isAuthenticated) {
-    return null; // 或者可以返回一个加载指示器
+    return null;
   }
 
   return (
