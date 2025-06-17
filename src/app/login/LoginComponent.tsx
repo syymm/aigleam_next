@@ -45,10 +45,46 @@ const LoginComponent: React.FC = () => {
     },
   });
 
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: '',
+    severity: 'error' as 'error' | 'success'
+  });
+
+  const showNotification = (message: string, severity: 'error' | 'success') => {
+    setSnackbar({
+      open: true,
+      message,
+      severity
+    });
+  };
+
+  const handleSnackbarClose = () => {
+    setSnackbar(prev => ({ ...prev, open: false }));
+  };
+
   const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    if (!validateForm()) {
+    // 表单验证
+    if (!values.username.trim()) {
+      showNotification('请输入邮箱地址', 'error');
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(values.username)) {
+      showNotification('邮箱格式不正确', 'error');
+      return;
+    }
+
+    if (!values.password.trim()) {
+      showNotification('请输入密码', 'error');
+      return;
+    }
+
+    if (values.password.length < 6) {
+      showNotification('密码至少需要6位字符', 'error');
       return;
     }
 
@@ -72,8 +108,6 @@ const LoginComponent: React.FC = () => {
               variant="outlined"
               fullWidth
               margin="normal"
-              error={!!errors.username}
-              helperText={errors.username}
               disabled={isLoading}
             />
             <TextField
@@ -85,8 +119,6 @@ const LoginComponent: React.FC = () => {
               variant="outlined"
               fullWidth
               margin="normal"
-              error={!!errors.password}
-              helperText={errors.password}
               disabled={isLoading}
               InputProps={{
                 endAdornment: (
@@ -125,7 +157,7 @@ const LoginComponent: React.FC = () => {
               variant="contained" 
               color="primary" 
               fullWidth 
-              disabled={isLoading || !isValid}
+              disabled={isLoading}
               style={{ marginTop: '20px', minHeight: '42px' }}
               startIcon={isLoading ? <CircularProgress size={20} color="inherit" /> : null}
             >
@@ -145,20 +177,38 @@ const LoginComponent: React.FC = () => {
         </div>
 
         <Snackbar
-          open={!!error}
-          autoHideDuration={5000}
-          onClose={clearError}
+          open={snackbar.open}
+          autoHideDuration={3000}
+          onClose={handleSnackbarClose}
           anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
         >
           <Alert
-            onClose={clearError}
-            severity="error"
+            onClose={handleSnackbarClose}
+            severity={snackbar.severity}
             sx={{ width: '100%' }}
             variant="filled"
           >
-            {error}
+            {snackbar.message}
           </Alert>
         </Snackbar>
+
+        {error && (
+          <Snackbar
+            open={!!error}
+            autoHideDuration={5000}
+            onClose={clearError}
+            anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+          >
+            <Alert
+              onClose={clearError}
+              severity="error"
+              sx={{ width: '100%' }}
+              variant="filled"
+            >
+              {error}
+            </Alert>
+          </Snackbar>
+        )}
       </div>
     </ThemeProvider>
   );
