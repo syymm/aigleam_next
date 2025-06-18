@@ -28,6 +28,39 @@ body {
   }
 }
 
+/* Landing page specific styles */
+@layer components {
+  .landing-gradient {
+    background: linear-gradient(135deg, 
+      rgba(139, 69, 19, 0.1) 0%,
+      rgba(75, 0, 130, 0.2) 25%,
+      rgba(25, 25, 112, 0.3) 50%,
+      rgba(75, 0, 130, 0.2) 75%,
+      rgba(139, 69, 19, 0.1) 100%
+    );
+  }
+  
+  .glass-morphism {
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+  }
+  
+  .feature-card {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: all 0.3s ease;
+  }
+  
+  .feature-card:hover {
+    background: rgba(255, 255, 255, 0.1);
+    transform: translateY(-2px);
+  }
+}
+
 /* 针对自动填充的输入框样式 */
 input:-webkit-autofill,
 input:-webkit-autofill:hover,
