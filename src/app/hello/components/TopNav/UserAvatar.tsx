@@ -15,6 +15,8 @@ import LogoutButton from '../Auth/LogoutButton';
 import UpgradeButton from '../Account/UpgradeButton';
 import DarkModeIcon from '@mui/icons-material/DarkMode';
 import LightModeIcon from '@mui/icons-material/LightMode';
+import SettingsIcon from '@mui/icons-material/Settings';
+import { useRouter } from 'next/navigation';
 
 interface UserAvatarProps {
   onThemeToggle: () => void;
@@ -49,6 +51,7 @@ const UserAvatar: React.FC<UserAvatarProps> = ({ onThemeToggle, onUpgrade, isDar
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const router = useRouter();
 
   const handleClick = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
@@ -89,6 +92,11 @@ const UserAvatar: React.FC<UserAvatarProps> = ({ onThemeToggle, onUpgrade, isDar
     }
   };
 
+  const handleSettingsClick = () => {
+    handleClose();
+    router.push('/settings');
+  };
+
   return (
     <>
       <AvatarWrapper>
@@ -109,6 +117,12 @@ const UserAvatar: React.FC<UserAvatarProps> = ({ onThemeToggle, onUpgrade, isDar
         onClose={handleClose}
       >
         <UpgradeButton onUpgrade={onUpgrade} />
+        <MenuItem onClick={handleSettingsClick}>
+          <ListItemIcon>
+            <SettingsIcon />
+          </ListItemIcon>
+          <ListItemText primary="设置" />
+        </MenuItem>
         <MenuItem onClick={onThemeToggle}>
           <ListItemIcon>
             {isDarkMode ? <LightModeIcon /> : <DarkModeIcon />}

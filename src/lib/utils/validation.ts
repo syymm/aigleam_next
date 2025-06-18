@@ -38,3 +38,19 @@ export const validateLoginInput = (data: LoginRequest): void => {
 export const sanitizeInput = (input: string): string => {
   return input.trim().toLowerCase();
 };
+
+export const validatePassword = (password: string): { isValid: boolean; message?: string } => {
+  if (!password || typeof password !== 'string') {
+    return { isValid: false, message: '密码不能为空' };
+  }
+
+  if (password.trim().length === 0) {
+    return { isValid: false, message: '密码不能为空' };
+  }
+
+  if (password.length < 6) {
+    return { isValid: false, message: '密码长度至少需要6位' };
+  }
+
+  return { isValid: true };
+};
