@@ -214,26 +214,15 @@ function selectImportantMessages(
 }
 
 // 从数据库中获取对话历史（优化版）
-async function getConversationHistory(conversationId: string, model: string): Promise<ExtendedChatCompletionMessageParam[]> {
-  // 获取更多消息用于智能筛选
+async function getConversationHistory(conversationId: string): Promise<Array<{ content: string; isUser: boolean; createdAt: Date }>> {
+  // 获取所有消息用于智能筛选（移除token限制，在后续统一处理）
   const messages = await prisma.message.findMany({
     where: { conversationId },
     orderBy: { createdAt: 'asc' }, // 按时间正序获取
     select: { content: true, isUser: true, createdAt: true },
   });
   
-  if (messages.length === 0) return [];
-  
-  // 计算可用于历史消息的token数量
-  const maxHistoryTokens = Math.floor(getModelTokenLimit(model) * 0.7); // 70%用于历史
-  
-  // 智能选择重要消息
-  const selectedMessages = selectImportantMessages(messages, maxHistoryTokens);
-  
-  return selectedMessages.map((m) => ({
-    role: m.isUser ? 'user' : 'assistant',
-    content: typeof m.content === 'string' ? m.content : JSON.stringify(m.content),
-  }));
+  return messages;
 }
 
 /**
@@ -296,7 +285,7 @@ function countChatTokens(messages: ExtendedChatCompletionMessageParam[], model: 
  */
 function buildOptimizedContext(
   systemPrompt: string | null,
-  conversationHistory: ExtendedChatCompletionMessageParam[],
+  rawHistory: Array<{ content: string; isUser: boolean; createdAt: Date }>,
   userMessage: string,
   model: string
 ): ExtendedChatCompletionMessageParam[] {
@@ -312,7 +301,6 @@ function buildOptimizedContext(
   }
   
   // 2. 当前用户消息（优先级最高）
-  const currentMsg = { role: 'user' as const, content: userMessage };
   const currentTokens = estimateTokens(userMessage);
   usedTokens += currentTokens;
   
@@ -320,27 +308,21 @@ function buildOptimizedContext(
   const reservedTokens = Math.min(2000, maxTokens * 0.3); // 预留30%或2000tokens
   const availableForHistory = maxTokens - usedTokens - reservedTokens;
   
-  // 4. 智能选择历史消息（已经在getConversationHistory中完成了选择）
-  // 这里只需要确保不超过可用token
-  if (availableForHistory > 0 && conversationHistory.length > 0) {
-    let historyTokens = 0;
-    const selectedHistory: ExtendedChatCompletionMessageParam[] = [];
+  // 4. 智能选择历史消息
+  if (availableForHistory > 0 && rawHistory.length > 0) {
+    const selectedHistory = selectImportantMessages(rawHistory, availableForHistory);
     
-    for (const msg of conversationHistory) {
-      const msgTokens = estimateTokens(msg.content as string);
-      if (historyTokens + msgTokens <= availableForHistory) {
-        selectedHistory.push(msg);
-        historyTokens += msgTokens;
-      } else {
-        break; // 停止添加，避免超出限制
-      }
-    }
+    // 转换为OpenAI格式
+    const historyMessages: ExtendedChatCompletionMessageParam[] = selectedHistory.map(msg => ({
+      role: msg.isUser ? 'user' as const : 'assistant' as const,
+      content: msg.content
+    }));
     
-    context.push(...selectedHistory);
+    context.push(...historyMessages);
   }
   
   // 5. 最后添加当前用户消息
-  context.push(currentMsg);
+  context.push({ role: 'user' as const, content: userMessage });
   
   // 6. 清理缓存（定期维护）
   cleanTokenCache();
@@ -359,7 +341,14 @@ function buildAndTrimMessages(
   model: string,
   maxTokens: number
 ): ExtendedChatCompletionMessageParam[] {
-  return buildOptimizedContext(systemPrompt, conversationHistory, userMessage, model);
+  // 转换格式以兼容新的函数
+  const rawHistory = conversationHistory.map(msg => ({
+    content: msg.content as string,
+    isUser: msg.role === 'user',
+    createdAt: new Date() // 使用当前时间作为默认值
+  }));
+  
+  return buildOptimizedContext(systemPrompt, rawHistory, userMessage, model);
 }
 
 export async function POST(request: Request) {
@@ -408,8 +397,8 @@ export async function POST(request: Request) {
     const updatedConv = await prisma.conversation.findUnique({ where: { id: conversationId } });
     const systemPrompt = updatedConv?.systemPrompt || null;
 
-    // 获取对话历史（传入模型参数进行智能选择）
-    const conversationHistory = await getConversationHistory(conversationId, model);
+    // 获取对话历史
+    const conversationHistory = await getConversationHistory(conversationId);
 
     // 使用数据库事务处理消息和文件保存
     const { messages: finalMessages, appendedFileInfo } = await prisma.$transaction(async (prisma) => {
@@ -536,31 +525,27 @@ export async function POST(request: Request) {
 
       return { messages, appendedFileInfo };
     });
-    // 将文件信息追加到最后一条用户消息
+    // 将文件信息追加到最后一条用户消息并检查token限制
     let messages = finalMessages;
     if (appendedFileInfo && messages.length > 0) {
       const lastMessage = messages[messages.length - 1];
       if (lastMessage && lastMessage.role === 'user') {
-        // 如果 content 为 undefined 则赋予空字符串作为默认值
+        // 更新最后一条用户消息的内容
         const oldContent =
           typeof lastMessage.content === 'string'
             ? lastMessage.content
             : JSON.stringify(lastMessage.content ?? '');
-        lastMessage.content = oldContent + appendedFileInfo;
-      }
-    }
-
-    // 追加文件信息后可能超出 token 限制，再次裁剪（以最后一条用户消息为准）
-    if (messages.length > 0) {
-      const lastUserMsg = messages[messages.length - 1]?.role === 'user'
-        ? messages[messages.length - 1]
-        : undefined;
-      if (lastUserMsg) {
-        const lastContentStr =
-          typeof lastUserMsg.content === 'string'
-            ? lastUserMsg.content
-            : JSON.stringify(lastUserMsg.content ?? '');
-        messages = buildOptimizedContext(systemPrompt, conversationHistory, lastContentStr, model);
+        const updatedContent = oldContent + appendedFileInfo;
+        lastMessage.content = updatedContent;
+        
+        // 检查是否超出token限制，如果超出则重新构建上下文
+        const totalTokens = messages.reduce((sum, msg) => sum + estimateTokens(msg.content as string), 0);
+        const maxTokens = getModelTokenLimit(model);
+        
+        if (totalTokens > maxTokens) {
+          // 重新构建上下文，使用更新后的用户消息
+          messages = buildOptimizedContext(systemPrompt, conversationHistory, updatedContent, model);
+        }
       }
     }
 
