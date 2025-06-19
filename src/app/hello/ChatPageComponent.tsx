@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { styled } from '@mui/material/styles';
 import Box from '@mui/material/Box';
 import CssBaseline from '@mui/material/CssBaseline';
+import Snackbar from '@mui/material/Snackbar';
+import Alert from '@mui/material/Alert';
 import TopNav from './components/TopNav/TopNav';
 import Sidebar from './components/Sidebar/Sidebar';
 import ChatArea from './components/ChatArea/ChatArea';
@@ -44,6 +46,15 @@ const ChatPageComponent: React.FC = () => {
   const [messagesMap, setMessagesMap] = useState<Record<string, Message[]>>({});
   const [selectedModel, setSelectedModel] = useState('gpt-3.5-turbo');
   const [isLoading, setIsLoading] = useState(false);
+  const [snackbar, setSnackbar] = useState<{
+    open: boolean;
+    message: string;
+    severity: 'error' | 'warning' | 'info' | 'success';
+  }>({
+    open: false,
+    message: '',
+    severity: 'error'
+  });
   const router = useRouter();
 
   useEffect(() => {
@@ -68,6 +79,7 @@ const ChatPageComponent: React.FC = () => {
       }
     } catch (error) {
       console.error('加载会话失败:', error);
+      showError('加载会话列表失败');
       // 即使加载失败也开始新聊天
       handleStartNewChat();
     }
@@ -75,6 +87,29 @@ const ChatPageComponent: React.FC = () => {
 
   const handleDrawerOpen = () => setOpen(true);
   const handleDrawerClose = () => setOpen(false);
+
+  // 显示错误信息的辅助函数
+  const showError = (message: string) => {
+    setSnackbar({
+      open: true,
+      message,
+      severity: 'error'
+    });
+  };
+
+  // 显示成功信息的辅助函数
+  const showSuccess = (message: string) => {
+    setSnackbar({
+      open: true,
+      message,
+      severity: 'success'
+    });
+  };
+
+  // 关闭 Snackbar
+  const handleSnackbarClose = () => {
+    setSnackbar(prev => ({ ...prev, open: false }));
+  };
 
   const handleStartNewChat = () => {
     const tempId = `temp-${Date.now()}`;
@@ -117,7 +152,10 @@ const ChatPageComponent: React.FC = () => {
     } catch (error) {
       console.error('Stream error:', error);
       
-      // 显示错误消息
+      // 使用 Snackbar 显示错误
+      showError('消息接收失败，正在重试...');
+      
+      // 更新消息状态为错误（但不改变内容）
       setMessagesMap(prevMap => {
         const messages = prevMap[conversationId] || [];
         return {
@@ -126,7 +164,7 @@ const ChatPageComponent: React.FC = () => {
             msg.id === messageId 
               ? { 
                   ...msg, 
-                  content: msg.content || '消息接收失败，请重试', 
+                  content: msg.content || '加载中...', 
                   isError: true 
                 } 
               : msg
@@ -164,8 +202,20 @@ const ChatPageComponent: React.FC = () => {
             }
           } catch (retryError) {
             console.error('重试失败:', retryError);
+            showError(`重试失败: ${retryError instanceof Error ? retryError.message : '未知错误'}`);
           }
         }, 1000 * Math.pow(2, retryCount)); // 指数退避
+      } else {
+        // 最终重试失败
+        showError('消息接收失败，请重新发送消息');
+        // 移除失败的消息
+        setMessagesMap(prevMap => {
+          const messages = prevMap[conversationId] || [];
+          return {
+            ...prevMap,
+            [conversationId]: messages.filter(msg => msg.id !== messageId)
+          };
+        });
       }
     }
   };
@@ -281,21 +331,20 @@ const ChatPageComponent: React.FC = () => {
     } catch (error) {
       console.error('Error:', error);
       
-      // 显示错误消息给用户
-      const errorMessage = {
-        id: `error-${Date.now()}`,
-        content: error instanceof Error ? error.message : '发送消息失败，请检查网络连接或稍后重试',
-        isUser: false,
-        isError: true,
-      };
-
-      setMessagesMap(prevMap => ({
-        ...prevMap,
-        [actualConversationId]: [
-          ...(prevMap[actualConversationId] || []),
-          errorMessage
-        ]
-      }));
+      // 使用 Snackbar 显示错误信息
+      const errorMessage = error instanceof Error ? error.message : '发送消息失败，请检查网络连接或稍后重试';
+      showError(errorMessage);
+      
+      // 移除用户刚发送的消息和文件消息（因为发送失败了）
+      setMessagesMap(prevMap => {
+        const messages = prevMap[actualConversationId] || [];
+        // 保留发送失败前的消息
+        const filteredMessages = messages.slice(0, -(1 + files.length));
+        return {
+          ...prevMap,
+          [actualConversationId]: filteredMessages
+        };
+      });
     } finally {
       setIsLoading(false);
     }
@@ -335,6 +384,8 @@ const ChatPageComponent: React.FC = () => {
       );
     } catch (error) {
       console.error('重命名失败:', error);
+      const errorMessage = error instanceof Error ? error.message : '重命名失败';
+      showError(errorMessage);
       throw error;
     }
   };
@@ -372,6 +423,8 @@ const ChatPageComponent: React.FC = () => {
       }
     } catch (error) {
       console.error('删除会话失败:', error);
+      const errorMessage = error instanceof Error ? error.message : '删除会话失败';
+      showError(errorMessage);
       throw error;
     }
   };
@@ -394,6 +447,8 @@ const ChatPageComponent: React.FC = () => {
       }
     } catch (error) {
       console.error('切换会话失败:', error);
+      const errorMessage = error instanceof Error ? error.message : '切换会话失败';
+      showError(errorMessage);
       throw error;
     }
   };
@@ -450,6 +505,23 @@ const ChatPageComponent: React.FC = () => {
           <InputArea onSendMessage={handleSendMessage} />
         </div>
       </Main>
+      
+      {/* 错误提示 Snackbar */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={6000}
+        onClose={handleSnackbarClose}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert 
+          onClose={handleSnackbarClose} 
+          severity={snackbar.severity}
+          variant="filled"
+          sx={{ width: '100%' }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };

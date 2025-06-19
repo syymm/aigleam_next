@@ -16,7 +16,7 @@ export interface Message {
   fileName?: string;
   fileType?: string;
   fileUrl?: string;
-  isError?: boolean; // 前端用于标识错误消息，不存储到数据库
+  isError?: boolean; // 前端用于标识加载状态，不存储到数据库
 }
 
 // 对话接口
