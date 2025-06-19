@@ -364,18 +364,102 @@ export async function POST(request: Request) {
     }
 
     const formData = await request.formData();
-    const message = (formData.get('message') as string) || '';
-    const model = (formData.get('model') as string) || 'gpt-3.5-turbo';
-    const conversationId = formData.get('conversationId') as string;
+    
+    // 输入验证
+    const messageRaw = formData.get('message') as string;
+    const modelRaw = formData.get('model') as string;
+    const conversationIdRaw = formData.get('conversationId') as string;
+    
+    // 验证必需字段
+    if (!messageRaw || typeof messageRaw !== 'string') {
+      return NextResponse.json({ error: '消息内容不能为空' }, { status: 400 });
+    }
+    
+    if (!conversationIdRaw || typeof conversationIdRaw !== 'string') {
+      return NextResponse.json({ error: '会话ID不能为空' }, { status: 400 });
+    }
+    
+    // 验证消息长度（最大10KB）
+    if (messageRaw.length > 10240) {
+      return NextResponse.json({ error: '消息内容过长，最大支持10KB' }, { status: 400 });
+    }
+    
+    // 验证会话ID格式（UUID格式或temp-开头）
+    const conversationIdPattern = /^(temp-\d+|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i;
+    if (!conversationIdPattern.test(conversationIdRaw)) {
+      return NextResponse.json({ error: '无效的会话ID格式' }, { status: 400 });
+    }
+    
+    // 验证模型白名单
+    const allowedModels = ['gpt-3.5-turbo', 'gpt-4', 'gpt-4-turbo', 'gpt-4o', 'gpt-4o-mini'];
+    const model = allowedModels.includes(modelRaw) ? modelRaw : 'gpt-3.5-turbo';
+    
+    const message = messageRaw.trim();
+    const conversationId = conversationIdRaw;
 
+    // 安全解析JSON
+    let prompt = null;
     const promptData = formData.get('prompt');
-    const prompt = promptData ? JSON.parse(promptData.toString()) : null;
+    if (promptData) {
+      try {
+        const promptStr = promptData.toString();
+        if (promptStr.length > 5120) { // 最大5KB
+          return NextResponse.json({ error: 'Prompt内容过长' }, { status: 400 });
+        }
+        prompt = JSON.parse(promptStr);
+        
+        // 验证prompt结构
+        if (prompt && (typeof prompt.content !== 'string' || typeof prompt.name !== 'string')) {
+          return NextResponse.json({ error: '无效的Prompt格式' }, { status: 400 });
+        }
+      } catch (error) {
+        return NextResponse.json({ error: '无效的Prompt JSON格式' }, { status: 400 });
+      }
+    }
 
-    // 收集上传文件
+    // 收集上传文件并验证
     const files: File[] = [];
-    for (let i = 0;; i++) {
+    const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+    const MAX_FILES = 5; // 最多5个文件
+    let totalSize = 0;
+    
+    for (let i = 0; i < MAX_FILES; i++) {
       const file = formData.get(`file${i}`) as File | null;
       if (!file) break;
+      
+      // 验证文件大小
+      if (file.size > MAX_FILE_SIZE) {
+        return NextResponse.json({ 
+          error: `文件 ${file.name} 过大，最大支持10MB` 
+        }, { status: 400 });
+      }
+      
+      // 验证总大小
+      totalSize += file.size;
+      if (totalSize > MAX_FILE_SIZE * 2) { // 总共最多20MB
+        return NextResponse.json({ 
+          error: '文件总大小超过限制（20MB）' 
+        }, { status: 400 });
+      }
+      
+      // 验证文件类型
+      const allowedTypes = [
+        // 图片
+        'image/jpeg', 'image/png', 'image/gif', 'image/webp',
+        // 文本
+        'text/plain', 'text/markdown', 'text/csv', 'application/json',
+        'text/javascript', 'text/html', 'text/css',
+        // 文档
+        'application/pdf', 'application/msword',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+      ];
+      
+      if (!allowedTypes.includes(file.type)) {
+        return NextResponse.json({ 
+          error: `不支持的文件类型: ${file.type}` 
+        }, { status: 400 });
+      }
+      
       files.push(file);
     }
 
@@ -400,46 +484,48 @@ export async function POST(request: Request) {
     // 获取对话历史
     const conversationHistory = await getConversationHistory(conversationId);
 
-    // 使用数据库事务处理消息和文件保存
-    const { messages: finalMessages, appendedFileInfo } = await prisma.$transaction(async (prisma) => {
-      // 智能构建对话上下文
-      let messages = buildOptimizedContext(systemPrompt, conversationHistory, message, model);
+    // 第一步：快速保存用户消息（短事务）
+    await prisma.message.create({
+      data: {
+        content: message,
+        isUser: true,
+        conversationId,
+        prompt: prompt?.content,
+        promptName: prompt?.name,
+      },
+    });
 
-      // 数据库记录用户输入
-      await prisma.message.create({
-        data: {
-          content: message,
-          isUser: true,
-          conversationId,
-          prompt: prompt?.content,
-          promptName: prompt?.name,
-        },
-      });
+    // 第二步：处理文件上传（在事务外，避免长时间锁定）
+    let appendedFileInfo = '';
+    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-      // 处理上传文件，将相关信息追加到用户消息中
-      let appendedFileInfo = '';
-      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    for (const file of files) {
+      const bytes = await file.arrayBuffer();
+      const buffer = Buffer.from(bytes);
+      const fileType = getFileType(file);
 
-      for (const file of files) {
-        const bytes = await file.arrayBuffer();
-        const buffer = Buffer.from(bytes);
-        const fileType = getFileType(file);
-
+      try {
         switch (fileType) {
           case 'image': {
+            // 验证图片大小（额外检查）
+            if (file.size > 5 * 1024 * 1024) { // 图片最大5MB
+              throw new Error(`图片 ${file.name} 过大，最大支持5MB`);
+            }
+            
             const base64Image = buffer.toString('base64');
             const mimeType = file.type || 'image/jpeg';
             const imageUrl = `data:${mimeType};base64,${base64Image}`;
             appendedFileInfo += `\n[已上传图片: ${file.name}]`;
 
+            // 单独保存文件消息（短事务）
             await prisma.message.create({
               data: {
-                content: `已上传图片：${file.name}`,
+                content: `已上传图片：${file.name} (${Math.round(file.size/1024)}KB)`,
                 isUser: true,
                 conversationId,
                 fileName: file.name,
                 fileType: file.type,
-                fileUrl: imageUrl,
+                fileUrl: `placeholder_${file.name}`, // 存储占位符而非完整base64
                 prompt: prompt?.content,
                 promptName: prompt?.name,
               },
@@ -448,6 +534,11 @@ export async function POST(request: Request) {
           }
           case 'text': {
             const textContent = buffer.toString('utf-8');
+            // 限制文本文件大小
+            if (textContent.length > 50000) { // 最大50KB文本
+              throw new Error(`文本文件 ${file.name} 过大，最大支持50KB`);
+            }
+            
             appendedFileInfo += `\n[已上传文本: ${file.name}, 片段: ${textContent.slice(0, 50)}...]`;
 
             await prisma.message.create({
@@ -457,7 +548,7 @@ export async function POST(request: Request) {
                 conversationId,
                 fileName: file.name,
                 fileType: file.type,
-                fileUrl: textContent,
+                fileUrl: textContent.slice(0, 10000), // 限制存储大小
                 prompt: prompt?.content,
                 promptName: prompt?.name,
               },
@@ -466,7 +557,7 @@ export async function POST(request: Request) {
           }
           case 'document': {
             try {
-              // 上传到 OpenAI（如果需要）
+              // 文档上传到 OpenAI（外部API调用）
               const uploadFile = new File([buffer], file.name, {
                 type: file.type || 'application/octet-stream',
               });
@@ -521,10 +612,26 @@ export async function POST(request: Request) {
             });
           }
         }
+      } catch (fileError) {
+        console.error(`处理文件 ${file.name} 失败:`, fileError);
+        
+        // 保存错误消息
+        await prisma.message.create({
+          data: {
+            content: `文件处理失败：${file.name} - ${fileError instanceof Error ? fileError.message : '未知错误'}`,
+            isUser: true,
+            conversationId,
+            fileName: file.name,
+            fileType: file.type,
+            prompt: prompt?.content,
+            promptName: prompt?.name,
+          },
+        });
       }
+    }
 
-      return { messages, appendedFileInfo };
-    });
+    // 第三步：构建AI对话上下文
+    let finalMessages = buildOptimizedContext(systemPrompt, conversationHistory, message, model);
     // 将文件信息追加到最后一条用户消息并检查token限制
     let messages = finalMessages;
     if (appendedFileInfo && messages.length > 0) {
@@ -576,8 +683,8 @@ export async function POST(request: Request) {
               }
             }
 
-            // 流结束后保存 AI 回复到数据库（使用事务）
-            await prisma.$transaction(async (prisma) => {
+            // 流结束后保存 AI 回复到数据库（分开执行，避免事务）
+            try {
               await prisma.message.create({
                 data: {
                   content: fullResponse,
@@ -588,12 +695,15 @@ export async function POST(request: Request) {
                 },
               });
 
-              // 更新会话时间
+              // 更新会话时间（独立操作）
               await prisma.conversation.update({
                 where: { id: conversationId },
                 data: { updatedAt: new Date() },
               });
-            });
+            } catch (dbError) {
+              console.error('保存AI回复失败:', dbError);
+              // 不影响用户体验，记录错误即可
+            }
 
             controller.close();
           } catch (err) {

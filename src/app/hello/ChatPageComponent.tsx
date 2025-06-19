@@ -122,6 +122,7 @@ const ChatPageComponent: React.FC = () => {
     response: Response, 
     messageId: string, 
     conversationId: string, 
+    originalMessage: string, // 新增：原始消息，用于重试
     retryCount: number = 0
   ) => {
     try {
@@ -177,10 +178,10 @@ const ChatPageComponent: React.FC = () => {
         console.log(`重试第 ${retryCount + 1} 次...`);
         setTimeout(async () => {
           try {
-            // 重新发送请求
+            // 重新发送请求，使用原始消息
             const retryResponse = await fetch('/api/chat', {
               method: 'POST',
-              body: createFormDataForRetry(conversationId),
+              body: createFormDataForRetry(conversationId, originalMessage),
             });
 
             if (retryResponse.ok) {
@@ -198,7 +199,7 @@ const ChatPageComponent: React.FC = () => {
               });
 
               // 重新处理流
-              await handleStreamResponse(retryResponse, messageId, conversationId, retryCount + 1);
+              await handleStreamResponse(retryResponse, messageId, conversationId, originalMessage, retryCount + 1);
             }
           } catch (retryError) {
             console.error('重试失败:', retryError);
@@ -206,14 +207,34 @@ const ChatPageComponent: React.FC = () => {
           }
         }, 1000 * Math.pow(2, retryCount)); // 指数退避
       } else {
-        // 最终重试失败
-        showError('消息接收失败，请重新发送消息');
-        // 移除失败的消息
+        // 最终重试失败 - 保存错误消息到数据库而不是删除
+        showError('AI回复失败，已保存为错误消息');
+        
+        // 将失败的消息标记为错误并保存到数据库
+        try {
+          await fetch('/api/messages', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              content: '[AI回复失败]',
+              conversationId,
+              isUser: false,
+            }),
+          });
+        } catch (dbError) {
+          console.error('保存错误消息失败:', dbError);
+        }
+        
+        // 更新前端显示错误状态，但不删除消息
         setMessagesMap(prevMap => {
           const messages = prevMap[conversationId] || [];
           return {
             ...prevMap,
-            [conversationId]: messages.filter(msg => msg.id !== messageId)
+            [conversationId]: messages.map(msg =>
+              msg.id === messageId 
+                ? { ...msg, content: '[AI回复失败，请重新发送消息]', isError: true } 
+                : msg
+            )
           };
         });
       }
@@ -221,9 +242,9 @@ const ChatPageComponent: React.FC = () => {
   };
 
   // 创建重试用的FormData
-  const createFormDataForRetry = (conversationId: string) => {
+  const createFormDataForRetry = (conversationId: string, originalMessage: string) => {
     const formData = new FormData();
-    formData.append('message', '请继续');
+    formData.append('message', originalMessage); // 使用原始消息而不是固定文本
     formData.append('model', selectedModel);
     formData.append('conversationId', conversationId);
     return formData;
@@ -326,7 +347,7 @@ const ChatPageComponent: React.FC = () => {
       }));
 
       // 处理流式响应（带错误处理和重试）
-      await handleStreamResponse(response, aiMessage.id, actualConversationId);
+      await handleStreamResponse(response, aiMessage.id, actualConversationId, content);
 
     } catch (error) {
       console.error('Error:', error);
@@ -335,16 +356,35 @@ const ChatPageComponent: React.FC = () => {
       const errorMessage = error instanceof Error ? error.message : '发送消息失败，请检查网络连接或稍后重试';
       showError(errorMessage);
       
-      // 移除用户刚发送的消息和文件消息（因为发送失败了）
-      setMessagesMap(prevMap => {
-        const messages = prevMap[actualConversationId] || [];
-        // 保留发送失败前的消息
-        const filteredMessages = messages.slice(0, -(1 + files.length));
-        return {
-          ...prevMap,
-          [actualConversationId]: filteredMessages
+      // 检查错误类型，决定是否移除消息
+      const shouldRemoveMessages = 
+        actualConversationId.startsWith('temp-') || // 如果是临时对话创建失败
+        (error instanceof Error && error.message.includes('创建会话失败')); // 或者会话创建失败
+      
+      if (shouldRemoveMessages) {
+        // 只有在会话创建失败时才移除消息（因为还没保存到数据库）
+        setMessagesMap(prevMap => {
+          const messages = prevMap[actualConversationId] || [];
+          const filteredMessages = messages.slice(0, -(1 + files.length));
+          return {
+            ...prevMap,
+            [actualConversationId]: filteredMessages
+          };
+        });
+      } else {
+        // 如果是OpenAI API失败，用户消息已经保存到数据库，添加错误提示消息
+        const errorMessageObj = {
+          id: `error-${Date.now()}`,
+          content: `[发送失败: ${errorMessage}]`,
+          isUser: false,
+          isError: true
         };
-      });
+        
+        setMessagesMap(prevMap => ({
+          ...prevMap,
+          [actualConversationId]: [...(prevMap[actualConversationId] || []), errorMessageObj]
+        }));
+      }
     } finally {
       setIsLoading(false);
     }
@@ -496,7 +536,7 @@ const ChatPageComponent: React.FC = () => {
       <Main open={open}>
         <div className={`${styles.mainContent} ${styles[themeMode]}`}>
           <ChatArea
-            messages={messagesMap[currentConversationId] || []}
+            messages={currentConversationId ? messagesMap[currentConversationId] || [] : []}
             onBestResponse={handleBestResponse}
             onErrorResponse={handleErrorResponse}
             onQuoteReply={handleQuoteReply}

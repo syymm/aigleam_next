@@ -9,7 +9,25 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { content, conversationId, isUser, fileUrl, fileType, fileName } = await request.json();
+    const body = await request.json();
+    const { content, conversationId, isUser, fileUrl, fileType, fileName } = body;
+
+    // 输入验证
+    if (!content || typeof content !== 'string') {
+      return NextResponse.json({ error: '消息内容不能为空' }, { status: 400 });
+    }
+    
+    if (!conversationId || typeof conversationId !== 'string') {
+      return NextResponse.json({ error: '会话ID不能为空' }, { status: 400 });
+    }
+    
+    if (typeof isUser !== 'boolean') {
+      return NextResponse.json({ error: '无效的用户标识' }, { status: 400 });
+    }
+    
+    if (content.length > 10240) { // 10KB限制
+      return NextResponse.json({ error: '消息内容过长' }, { status: 400 });
+    }
 
     // 验证会话所有权
     const conversation = await prisma.conversation.findUnique({

@@ -10,6 +10,7 @@ import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import DescriptionIcon from '@mui/icons-material/Description';
 import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
 import ImageIcon from '@mui/icons-material/Image';
+import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
 
 interface Message {
   id: string;
@@ -18,6 +19,7 @@ interface Message {
   fileName?: string;
   fileType?: string;
   fileUrl?: string;
+  isError?: boolean;  // 新增：标记错误消息
   // prompt?: {        // ← 原先用来显示 prompt 的字段，现在前端不再展示
   //   name: string;
   //   content: string;
@@ -32,15 +34,21 @@ interface ChatAreaProps {
   isLoading?: boolean;
 }
 
-const MessagePaper = styled(Paper)(({ theme }) => ({
+const MessagePaper = styled(Paper)<{ isError?: boolean }>(({ theme, isError }) => ({
   padding: theme.spacing(2),
   marginBottom: theme.spacing(2),
   maxWidth: '70%',
   position: 'relative',
-  backgroundColor:
-    theme.palette.mode === 'dark'
+  backgroundColor: isError
+    ? theme.palette.mode === 'dark'
+      ? alpha(theme.palette.error.main, 0.1)
+      : alpha(theme.palette.error.main, 0.05)
+    : theme.palette.mode === 'dark'
       ? theme.palette.grey[900]
       : theme.palette.grey[100],
+  border: isError 
+    ? `1px solid ${alpha(theme.palette.error.main, 0.3)}`
+    : 'none',
   wordWrap: 'break-word',
   overflowWrap: 'break-word',
   whiteSpace: 'pre-wrap',
@@ -151,7 +159,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({
           mb: 2,
         }}
       >
-        <MessagePaper elevation={1} onMouseUp={handleTextSelection}>
+        <MessagePaper elevation={1} onMouseUp={handleTextSelection} isError={message.isError}>
           {/* 
             1) 去掉了以下代码，不再显示 prompt:
 
@@ -162,17 +170,32 @@ const ChatArea: React.FC<ChatAreaProps> = ({
             2) 仅展示纯文本和文件 
           */}
           {message.content && !message.content.startsWith('已上传') && (
-            <Typography
-              color="text.primary"
-              sx={{
-                wordBreak: 'break-word',
-                overflowWrap: 'break-word',
-                maxWidth: '100%',
-                mb: relatedFileMessages.length > 0 ? 1 : 0,
-              }}
-            >
-              {message.content}
-            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
+              {message.isError && (
+                <ErrorOutlineIcon 
+                  color="error" 
+                  sx={{ 
+                    fontSize: '1.2rem', 
+                    mt: 0.1,
+                    flexShrink: 0
+                  }} 
+                />
+              )}
+              <Typography
+                color={message.isError ? "error" : "text.primary"}
+                sx={{
+                  wordBreak: 'break-word',
+                  overflowWrap: 'break-word',
+                  maxWidth: '100%',
+                  mb: relatedFileMessages.length > 0 ? 1 : 0,
+                  fontStyle: message.isError ? 'italic' : 'normal', // 错误消息使用斜体
+                  fontWeight: message.isError ? 'bold' : 'normal',  // 错误消息使用粗体
+                  flex: 1
+                }}
+              >
+                {message.content}
+              </Typography>
+            </Box>
           )}
 
           {/* 文件预览 */}
@@ -208,8 +231,8 @@ const ChatArea: React.FC<ChatAreaProps> = ({
             </Box>
           )}
 
-          {/* AI消息的操作按钮 */}
-          {!message.isUser && (
+          {/* AI消息的操作按钮 - 错误消息不显示操作按钮 */}
+          {!message.isUser && !message.isError && (
             <Box className="message-actions">
               <IconButton
                 size="small"
