@@ -11,8 +11,27 @@ type ExtendedChatCompletionMessageParam = ChatCompletionMessageParam & {
 };
 
 // 配置常量
-const MAX_CONTEXT_MESSAGES = 10;
-const MAX_TOKENS = 4000;
+const MAX_CONTEXT_MESSAGES = 10; // 保留作为备用，将被智能选择替代
+
+// 动态获取模型Token限制
+function getModelTokenLimit(model: string): number {
+  const limits: Record<string, number> = {
+    'gpt-3.5-turbo': 4096,
+    'gpt-3.5-turbo-0301': 4096,
+    'gpt-3.5-turbo-16k': 16384,
+    'gpt-4': 8192,
+    'gpt-4-0314': 8192,
+    'gpt-4-32k': 32768,
+    'gpt-4-32k-0314': 32768,
+    'gpt-4-turbo': 128000,
+    'gpt-4o': 128000,
+    'gpt-4o-mini': 128000,
+  };
+  
+  const totalLimit = limits[model] || 4096;
+  // 预留40%给AI回复，60%用于上下文
+  return Math.floor(totalLimit * 0.6);
+}
 
 const SUPPORTED_EXTENSIONS = {
   images: ['jpg', 'jpeg', 'png', 'gif', 'webp'] as string[],
@@ -50,6 +69,86 @@ const SUPPORTED_MIMES = {
   ]),
 };
 
+// Token计算缓存
+const tokenCache = new Map<string, number>();
+
+// 快速Token估算（用于性能优化）
+function estimateTokens(content: string): number {
+  if (tokenCache.has(content)) {
+    return tokenCache.get(content)!;
+  }
+  
+  // 简单估算：中文约3字符=1token，英文约4字符=1token
+  const estimate = Math.ceil(content.length / 3.5);
+  tokenCache.set(content, estimate);
+  return estimate;
+}
+
+// 精确Token计算（需要时使用）
+function calculateExactTokens(content: string, model: string): number {
+  const cacheKey = `${model}:${content}`;
+  if (tokenCache.has(cacheKey)) {
+    return tokenCache.get(cacheKey)!;
+  }
+  
+  const encoding = getSafeEncoding(model);
+  try {
+    const tokens = encoding.encode(content).length;
+    tokenCache.set(cacheKey, tokens);
+    return tokens;
+  } finally {
+    encoding.free();
+  }
+}
+
+// 清理Token缓存（防止内存泄漏）
+function cleanTokenCache(): void {
+  if (tokenCache.size > 1000) {
+    // 保留最近的500个条目
+    const entries = Array.from(tokenCache.entries());
+    tokenCache.clear();
+    entries.slice(-500).forEach(([key, value]) => {
+      tokenCache.set(key, value);
+    });
+  }
+}
+
+// 消息重要性评分算法
+function calculateMessageScore(message: { content: string; isUser: boolean; createdAt: string | Date }): number {
+  let score = 0;
+  const content = message.content.toLowerCase();
+  
+  // 1. 时间权重（越新越重要）
+  const messageTime = new Date(message.createdAt).getTime();
+  const hoursAgo = (Date.now() - messageTime) / (1000 * 60 * 60);
+  score += Math.max(0, 10 - hoursAgo * 0.5); // 最近的消息得分更高
+  
+  // 2. 内容类型权重
+  if (content.includes('?') || content.includes('？')) score += 3; // 问题很重要
+  if (/^(请|帮|如何|怎么|什么|能否|可以|帮我)/.test(content)) score += 3; // 请求类消息
+  if (/^(总结|记住|重要|注意)/.test(content)) score += 4; // 明确的重要信息
+  if (/(姓名|名字|电话|邮箱|地址|生日)/.test(content)) score += 3; // 个人信息
+  if (/(决定|确定|选择|计划)/.test(content)) score += 2; // 决策信息
+  
+  // 3. 内容长度权重
+  if (message.content.length > 100) score += 1; // 长消息可能更重要
+  if (message.content.length > 300) score += 1; // 很长的消息更重要
+  
+  // 4. 用户vs助手消息权重
+  if (message.isUser) {
+    score += 1; // 用户消息稍微重要一些
+  } else {
+    // 助手的详细回答也很重要
+    if (message.content.length > 200) score += 1;
+  }
+  
+  // 5. 特殊标记
+  if (/(重要|关键|核心|主要)/.test(content)) score += 2;
+  if (/(临时|随便|无所谓)/.test(content)) score -= 1;
+  
+  return Math.max(0, score); // 确保分数不为负
+}
+
 function getFileType(file: File): 'image' | 'text' | 'document' | 'unknown' {
   const extension = file.name.split('.').pop()?.toLowerCase() || '';
 
@@ -64,18 +163,75 @@ function getFileType(file: File): 'image' | 'text' | 'document' | 'unknown' {
   return 'unknown';
 }
 
-// 从数据库中获取对话历史
-async function getConversationHistory(conversationId: string): Promise<ExtendedChatCompletionMessageParam[]> {
+// 智能选择重要消息
+function selectImportantMessages(
+  messages: Array<{ content: string; isUser: boolean; createdAt: string | Date }>,
+  maxTokens: number
+): Array<{ content: string; isUser: boolean; createdAt: string | Date }> {
+  if (messages.length === 0) return [];
+  
+  // 1. 计算每条消息的重要性评分
+  const scoredMessages = messages.map(msg => ({
+    message: msg,
+    score: calculateMessageScore(msg),
+    tokens: estimateTokens(msg.content)
+  }));
+  
+  // 2. 按重要性排序（保持最新的几条消息）
+  const recentCount = Math.min(5, messages.length); // 最近5条消息优先保留
+  const recentMessages = scoredMessages.slice(-recentCount);
+  const olderMessages = scoredMessages.slice(0, -recentCount);
+  
+  // 3. 对较旧的消息按重要性排序
+  olderMessages.sort((a, b) => b.score - a.score);
+  
+  // 4. 组合策略：优先选择最近消息，然后按重要性选择旧消息
+  const selected: typeof scoredMessages = [];
+  let currentTokens = 0;
+  
+  // 首先添加最近的消息
+  for (const item of recentMessages) {
+    if (currentTokens + item.tokens <= maxTokens) {
+      selected.push(item);
+      currentTokens += item.tokens;
+    }
+  }
+  
+  // 然后按重要性添加较旧的消息
+  for (const item of olderMessages) {
+    if (currentTokens + item.tokens <= maxTokens) {
+      selected.push(item);
+      currentTokens += item.tokens;
+    }
+  }
+  
+  // 5. 按时间顺序重新排列
+  const result = selected
+    .map(item => item.message)
+    .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+  
+  return result;
+}
+
+// 从数据库中获取对话历史（优化版）
+async function getConversationHistory(conversationId: string, model: string): Promise<ExtendedChatCompletionMessageParam[]> {
+  // 获取更多消息用于智能筛选
   const messages = await prisma.message.findMany({
     where: { conversationId },
-    orderBy: { createdAt: 'desc' },
-    take: MAX_CONTEXT_MESSAGES,
-    select: { content: true, isUser: true },
+    orderBy: { createdAt: 'asc' }, // 按时间正序获取
+    select: { content: true, isUser: true, createdAt: true },
   });
-  messages.reverse();
-  return messages.map((m) => ({
+  
+  if (messages.length === 0) return [];
+  
+  // 计算可用于历史消息的token数量
+  const maxHistoryTokens = Math.floor(getModelTokenLimit(model) * 0.7); // 70%用于历史
+  
+  // 智能选择重要消息
+  const selectedMessages = selectImportantMessages(messages, maxHistoryTokens);
+  
+  return selectedMessages.map((m) => ({
     role: m.isUser ? 'user' : 'assistant',
-    // 如果数据库里 content 不一定是 string，则做判断转换：
     content: typeof m.content === 'string' ? m.content : JSON.stringify(m.content),
   }));
 }
@@ -136,7 +292,65 @@ function countChatTokens(messages: ExtendedChatCompletionMessageParam[], model: 
 }
 
 /**
- * 组合 systemPrompt + 历史消息 + 新用户消息，并在超过上限时裁剪旧消息
+ * 智能构建对话上下文（新版本）
+ */
+function buildOptimizedContext(
+  systemPrompt: string | null,
+  conversationHistory: ExtendedChatCompletionMessageParam[],
+  userMessage: string,
+  model: string
+): ExtendedChatCompletionMessageParam[] {
+  const context: ExtendedChatCompletionMessageParam[] = [];
+  const maxTokens = getModelTokenLimit(model);
+  
+  // 1. 系统提示（优先级最高）
+  let usedTokens = 0;
+  if (systemPrompt) {
+    const systemMsg = { role: 'system' as const, content: systemPrompt };
+    context.push(systemMsg);
+    usedTokens += estimateTokens(systemPrompt);
+  }
+  
+  // 2. 当前用户消息（优先级最高）
+  const currentMsg = { role: 'user' as const, content: userMessage };
+  const currentTokens = estimateTokens(userMessage);
+  usedTokens += currentTokens;
+  
+  // 3. 预留回复空间
+  const reservedTokens = Math.min(2000, maxTokens * 0.3); // 预留30%或2000tokens
+  const availableForHistory = maxTokens - usedTokens - reservedTokens;
+  
+  // 4. 智能选择历史消息（已经在getConversationHistory中完成了选择）
+  // 这里只需要确保不超过可用token
+  if (availableForHistory > 0 && conversationHistory.length > 0) {
+    let historyTokens = 0;
+    const selectedHistory: ExtendedChatCompletionMessageParam[] = [];
+    
+    for (const msg of conversationHistory) {
+      const msgTokens = estimateTokens(msg.content as string);
+      if (historyTokens + msgTokens <= availableForHistory) {
+        selectedHistory.push(msg);
+        historyTokens += msgTokens;
+      } else {
+        break; // 停止添加，避免超出限制
+      }
+    }
+    
+    context.push(...selectedHistory);
+  }
+  
+  // 5. 最后添加当前用户消息
+  context.push(currentMsg);
+  
+  // 6. 清理缓存（定期维护）
+  cleanTokenCache();
+  
+  return context;
+}
+
+/**
+ * 兼容性函数：保持原有接口
+ * @deprecated 使用 buildOptimizedContext 替代
  */
 function buildAndTrimMessages(
   systemPrompt: string | null,
@@ -145,24 +359,7 @@ function buildAndTrimMessages(
   model: string,
   maxTokens: number
 ): ExtendedChatCompletionMessageParam[] {
-  const built: ExtendedChatCompletionMessageParam[] = [];
-
-  if (systemPrompt) {
-    built.push({ role: 'system', content: systemPrompt });
-  }
-  built.push(...conversationHistory);
-  built.push({ role: 'user', content: userMessage });
-
-  let totalTokens = countChatTokens(built, model);
-  if (totalTokens <= maxTokens) return built;
-
-  // 超出上限时，从最早的历史消息开始删除（保留 systemPrompt 和最新消息）
-  let startIndex = systemPrompt ? 1 : 0;
-  while (startIndex < built.length - 1 && totalTokens > maxTokens) {
-    built.splice(startIndex, 1);
-    totalTokens = countChatTokens(built, model);
-  }
-  return built;
+  return buildOptimizedContext(systemPrompt, conversationHistory, userMessage, model);
 }
 
 export async function POST(request: Request) {
@@ -211,13 +408,13 @@ export async function POST(request: Request) {
     const updatedConv = await prisma.conversation.findUnique({ where: { id: conversationId } });
     const systemPrompt = updatedConv?.systemPrompt || null;
 
-    // 获取对话历史
-    const conversationHistory = await getConversationHistory(conversationId);
+    // 获取对话历史（传入模型参数进行智能选择）
+    const conversationHistory = await getConversationHistory(conversationId, model);
 
     // 使用数据库事务处理消息和文件保存
     const { messages: finalMessages, appendedFileInfo } = await prisma.$transaction(async (prisma) => {
-      // 合并 systemPrompt、历史消息和当前用户消息，并裁剪 token
-      let messages = buildAndTrimMessages(systemPrompt, conversationHistory, message, model, MAX_TOKENS);
+      // 智能构建对话上下文
+      let messages = buildOptimizedContext(systemPrompt, conversationHistory, message, model);
 
       // 数据库记录用户输入
       await prisma.message.create({
@@ -363,7 +560,7 @@ export async function POST(request: Request) {
           typeof lastUserMsg.content === 'string'
             ? lastUserMsg.content
             : JSON.stringify(lastUserMsg.content ?? '');
-        messages = buildAndTrimMessages(systemPrompt, conversationHistory, lastContentStr, model, MAX_TOKENS);
+        messages = buildOptimizedContext(systemPrompt, conversationHistory, lastContentStr, model);
       }
     }
 
