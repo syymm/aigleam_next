@@ -82,6 +82,103 @@ const ChatPageComponent: React.FC = () => {
     setMessagesMap(prevMap => ({...prevMap, [tempId]: []}));
   };
 
+  // 处理流式响应的函数
+  const handleStreamResponse = async (
+    response: Response, 
+    messageId: string, 
+    conversationId: string, 
+    retryCount: number = 0
+  ) => {
+    try {
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+
+      if (!reader) {
+        throw new Error('无法获取响应流');
+      }
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        
+        const text = decoder.decode(value);
+        setMessagesMap(prevMap => {
+          const messages = prevMap[conversationId] || [];
+          return {
+            ...prevMap,
+            [conversationId]: messages.map(msg =>
+              msg.id === messageId 
+                ? { ...msg, content: msg.content + text } 
+                : msg
+            )
+          };
+        });
+      }
+    } catch (error) {
+      console.error('Stream error:', error);
+      
+      // 显示错误消息
+      setMessagesMap(prevMap => {
+        const messages = prevMap[conversationId] || [];
+        return {
+          ...prevMap,
+          [conversationId]: messages.map(msg =>
+            msg.id === messageId 
+              ? { 
+                  ...msg, 
+                  content: msg.content || '消息接收失败，请重试', 
+                  isError: true 
+                } 
+              : msg
+          )
+        };
+      });
+
+      // 重试逻辑（最多重试2次）
+      if (retryCount < 2) {
+        console.log(`重试第 ${retryCount + 1} 次...`);
+        setTimeout(async () => {
+          try {
+            // 重新发送请求
+            const retryResponse = await fetch('/api/chat', {
+              method: 'POST',
+              body: createFormDataForRetry(conversationId),
+            });
+
+            if (retryResponse.ok) {
+              // 清除错误状态
+              setMessagesMap(prevMap => {
+                const messages = prevMap[conversationId] || [];
+                return {
+                  ...prevMap,
+                  [conversationId]: messages.map(msg =>
+                    msg.id === messageId 
+                      ? { ...msg, content: '', isError: false } 
+                      : msg
+                  )
+                };
+              });
+
+              // 重新处理流
+              await handleStreamResponse(retryResponse, messageId, conversationId, retryCount + 1);
+            }
+          } catch (retryError) {
+            console.error('重试失败:', retryError);
+          }
+        }, 1000 * Math.pow(2, retryCount)); // 指数退避
+      }
+    }
+  };
+
+  // 创建重试用的FormData
+  const createFormDataForRetry = (conversationId: string) => {
+    const formData = new FormData();
+    formData.append('message', '请继续');
+    formData.append('model', selectedModel);
+    formData.append('conversationId', conversationId);
+    return formData;
+  };
+
   const handleSendMessage = async (content: string, files: File[]) => {
     if (!currentConversationId || (!content.trim() && files.length === 0)) return;
     
@@ -153,7 +250,17 @@ const ChatPageComponent: React.FC = () => {
         body: formData,
       });
 
-      if (!response.ok) throw new Error('发送消息失败');
+      if (!response.ok) {
+        // 尝试解析错误响应
+        let errorMessage = '发送消息失败';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorMessage;
+        } catch (e) {
+          // 如果无法解析JSON，使用默认错误消息
+        }
+        throw new Error(errorMessage);
+      }
 
       // 添加AI消息占位符
       const aiMessage = {
@@ -167,30 +274,27 @@ const ChatPageComponent: React.FC = () => {
         [actualConversationId]: [...(prevMap[actualConversationId] || []), aiMessage]
       }));
 
-      // 处理流式响应
-      const reader = response.body?.getReader();
-      const decoder = new TextDecoder();
-
-      while (reader) {
-        const { value, done } = await reader.read();
-        if (done) break;
-        
-        const text = decoder.decode(value);
-        setMessagesMap(prevMap => {
-          const messages = prevMap[actualConversationId] || [];
-          return {
-            ...prevMap,
-            [actualConversationId]: messages.map(msg =>
-              msg.id === aiMessage.id 
-                ? { ...msg, content: msg.content + text } 
-                : msg
-            )
-          };
-        });
-      }
+      // 处理流式响应（带错误处理和重试）
+      await handleStreamResponse(response, aiMessage.id, actualConversationId);
 
     } catch (error) {
       console.error('Error:', error);
+      
+      // 显示错误消息给用户
+      const errorMessage = {
+        id: `error-${Date.now()}`,
+        content: error instanceof Error ? error.message : '发送消息失败，请检查网络连接或稍后重试',
+        isUser: false,
+        isError: true,
+      };
+
+      setMessagesMap(prevMap => ({
+        ...prevMap,
+        [actualConversationId]: [
+          ...(prevMap[actualConversationId] || []),
+          errorMessage
+        ]
+      }));
     } finally {
       setIsLoading(false);
     }
