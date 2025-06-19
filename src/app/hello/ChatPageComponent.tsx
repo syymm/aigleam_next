@@ -182,8 +182,9 @@ const ChatPageComponent: React.FC = () => {
   const handleSendMessage = async (content: string, files: File[]) => {
     if (!currentConversationId || (!content.trim() && files.length === 0)) return;
     
+    let actualConversationId = currentConversationId;
+    
     try {
-      let actualConversationId = currentConversationId;
 
       // 如果是新会话，先创建会话
       if (currentConversationId.startsWith('temp-')) {
