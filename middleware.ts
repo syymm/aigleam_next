@@ -2,19 +2,21 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
 export function middleware(request: NextRequest) {
-  console.log('Middleware executing for path:', request.nextUrl.pathname);
-
   const authToken = request.cookies.get('authToken')?.value
 
+  // 保护 /hello 路由，没有token重定向到根目录
   if (!authToken && request.nextUrl.pathname.startsWith('/hello')) {
-    console.log('No authToken found, redirecting to login');
-    return NextResponse.redirect(new URL('/login', request.url))
+    return NextResponse.redirect(new URL('/', request.url))
   }
 
-  console.log('Middleware allowing request to continue');
+  // 如果访问根目录且有token，重定向到聊天页面
+  if (authToken && request.nextUrl.pathname === '/') {
+    return NextResponse.redirect(new URL('/hello', request.url))
+  }
+
   return NextResponse.next()
 }
 
 export const config = {
-  matcher: ['/hello', '/hello/:path*']
+  matcher: ['/', '/hello', '/hello/:path*']
 }
