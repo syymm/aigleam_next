@@ -1,22 +1,52 @@
-import React, { useState, useRef, ChangeEvent } from 'react';
-import { 
-  TextField, 
-  IconButton, 
-  Box, 
-  Tooltip,
-  Chip,
-  Typography,
-  alpha 
-} from '@mui/material';
-import SendIcon from '@mui/icons-material/Send';
-import AttachFileIcon from '@mui/icons-material/AttachFile';
-import CloseIcon from '@mui/icons-material/Close';
-import ImageIcon from '@mui/icons-material/Image';
-import DescriptionIcon from '@mui/icons-material/Description';
-import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
-import MagicWandIcon from '@mui/icons-material/AutoFixHigh';
-import CancelIcon from '@mui/icons-material/Cancel';
+import React, { useState, useRef, ChangeEvent, useEffect } from 'react';
+import styles from './InputArea.module.css';
 import { useTheme } from '../../../contexts/ThemeContext';
+
+// Custom SVG Icons
+const SendIcon: React.FC<{ className?: string; style?: React.CSSProperties }> = ({ className, style }) => (
+  <svg className={className} style={style} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="22" y1="2" x2="11" y2="13"></line>
+    <polygon points="22,2 15,22 11,13 2,9 22,2"></polygon>
+  </svg>
+);
+
+const AttachIcon: React.FC<{ className?: string; style?: React.CSSProperties }> = ({ className, style }) => (
+  <svg className={className} style={style} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66L9.64 16.2a2 2 0 0 1-2.83-2.83l8.49-8.49"></path>
+  </svg>
+);
+
+const CloseIcon: React.FC<{ className?: string; style?: React.CSSProperties }> = ({ className, style }) => (
+  <svg className={className} style={style} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="18" y1="6" x2="6" y2="18"></line>
+    <line x1="6" y1="6" x2="18" y2="18"></line>
+  </svg>
+);
+
+const ImageIcon: React.FC<{ className?: string; style?: React.CSSProperties }> = ({ className, style }) => (
+  <svg className={className} style={style} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+    <circle cx="8.5" cy="8.5" r="1.5"></circle>
+    <polyline points="21,15 16,10 5,21"></polyline>
+  </svg>
+);
+
+const DocumentIcon: React.FC<{ className?: string; style?: React.CSSProperties }> = ({ className, style }) => (
+  <svg className={className} style={style} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+    <polyline points="14,2 14,8 20,8"></polyline>
+    <line x1="16" y1="13" x2="8" y2="13"></line>
+    <line x1="16" y1="17" x2="8" y2="17"></line>
+    <polyline points="10,9 9,9 8,9"></polyline>
+  </svg>
+);
+
+const FileIcon: React.FC<{ className?: string; style?: React.CSSProperties }> = ({ className, style }) => (
+  <svg className={className} style={style} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path>
+    <polyline points="13,2 13,9 20,9"></polyline>
+  </svg>
+);
 
 interface InputAreaProps {
   onSendMessage: (message: string, files: File[]) => void;
@@ -30,7 +60,16 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
   const [isDragging, setIsDragging] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const textAreaRef = useRef<HTMLTextAreaElement>(null);
   const dragCounter = useRef(0);
+
+  // Auto-resize textarea
+  useEffect(() => {
+    if (textAreaRef.current) {
+      textAreaRef.current.style.height = 'auto';
+      textAreaRef.current.style.height = `${textAreaRef.current.scrollHeight}px`;
+    }
+  }, [inputValue]);
 
   const handleSend = () => {
     if (inputValue.trim() || selectedFiles.length > 0) {
@@ -43,7 +82,7 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
     }
   };
 
-  const handleKeyPress = (event: React.KeyboardEvent<HTMLDivElement>) => {
+  const handleKeyPress = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key === 'Enter' && !event.shiftKey) {
       event.preventDefault();
       handleSend();
@@ -110,127 +149,102 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
   };
 
   const getFileIcon = (fileType: string) => {
-    const iconStyle = {
-      fontSize: '16px',
-      marginRight: '4px',
-    };
-
     if (fileType.startsWith('image/')) {
-      return <ImageIcon sx={{ ...iconStyle, color: '#4CAF50' }} />;
+      return <ImageIcon className={styles.fileIcon} style={{ color: '#4CAF50' }} />;
     } else if (fileType.includes('pdf')) {
-      return <DescriptionIcon sx={{ ...iconStyle, color: '#F44336' }} />;
+      return <DocumentIcon className={styles.fileIcon} style={{ color: '#F44336' }} />;
     } else if (fileType.includes('document') || fileType.includes('text')) {
-      return <InsertDriveFileIcon sx={{ ...iconStyle, color: '#2196F3' }} />;
+      return <DocumentIcon className={styles.fileIcon} style={{ color: '#2196F3' }} />;
     }
-    return <InsertDriveFileIcon sx={{ ...iconStyle, color: '#757575' }} />;
+    return <FileIcon className={styles.fileIcon} style={{ color: '#757575' }} />;
   };
 
   return (
-    <Box sx={{ p: 2, display: 'flex', flexDirection: 'column', gap: 1 }}>
-      <Box sx={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'center', position: 'relative' }}>
-        <Box
-          onDragEnter={handleDragEnter}
-          onDragLeave={handleDragLeave}
-          onDragOver={handleDragOver}
-          onDrop={handleDrop}
-          sx={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'stretch',
-            backgroundColor: theme.palette.background.paper,
-            borderRadius: '16px',
-            padding: '8px 16px',
-            width: '70%',
-            boxShadow: '0 2px 10px rgba(0, 0, 0, 0.1)',
-            border: isDragging ? `2px dashed ${theme.palette.primary.main}` : `1px solid ${theme.palette.divider}`,
-            transition: 'all 0.2s ease',
-            position: 'relative',
-          }}
-        >
-          {isDragging && (
-            <Box
-              sx={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                backgroundColor: 'rgba(25, 118, 210, 0.08)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                borderRadius: '16px',
-                zIndex: 1,
-                pointerEvents: 'none',
-                backdropFilter: 'blur(2px)',
-                transition: 'all 0.2s ease',
-              }}
-            >
-              <Box sx={{ color: theme.palette.primary.main, fontWeight: 'bold', fontSize: '1.1rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
-                <AttachFileIcon sx={{ fontSize: 32 }} />
-                松开鼠标上传文件
-              </Box>
-            </Box>
-          )}
+    <div className={styles.inputArea}>
+      <div className={styles.container}>
+        <div className={styles.inputWrapper}>
+          <div
+            className={`${styles.inputContainer} ${isDragging ? styles.dragging : ''}`}
+            onDragEnter={handleDragEnter}
+            onDragLeave={handleDragLeave}
+            onDragOver={handleDragOver}
+            onDrop={handleDrop}
+          >
+            {isDragging && (
+              <div className={styles.dropOverlay}>
+                <div className={styles.dropText}>
+                  <AttachIcon />
+                  松开鼠标上传文件
+                </div>
+              </div>
+            )}
 
-          {selectedFiles.length > 0 && (
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: '4px', padding: '4px 8px', marginBottom: '4px', ml: '40px' }}>
-              {selectedFiles.map((file, index) => (
-                <Box
-                  key={`${file.name}-${index}`}
-                  sx={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 8px', backgroundColor: theme.palette.action.hover, borderRadius: '4px', maxWidth: 'fit-content' }}
-                >
-                  {getFileIcon(file.type)}
-                  <span style={{ fontSize: '0.875rem', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {file.name}
-                  </span>
-                  <IconButton size="small" onClick={() => handleRemoveFile(index)} sx={{ padding: '2px', marginLeft: '2px', '&:hover': { backgroundColor: 'rgba(0,0,0,0.04)' } }}>
-                    <CloseIcon sx={{ fontSize: 14 }} />
-                  </IconButton>
-                </Box>
-              ))}
-            </Box>
-          )}
+            {selectedFiles.length > 0 && (
+              <div className={styles.filesContainer}>
+                {selectedFiles.map((file, index) => (
+                  <div key={`${file.name}-${index}`} className={styles.fileChip}>
+                    {getFileIcon(file.type)}
+                    <span className={styles.fileName}>
+                      {file.name}
+                    </span>
+                    <button 
+                      className={styles.removeButton}
+                      onClick={() => handleRemoveFile(index)}
+                      type="button"
+                      aria-label={`Remove ${file.name}`}
+                    >
+                      <CloseIcon />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
 
-          <Box sx={{ display: 'flex', alignItems: 'center', position: 'relative', zIndex: 2 }}>
-            <Tooltip title="上传文件" placement="top">
-              <IconButton onClick={handleAttachClick} sx={{ color: theme.palette.primary.main, padding: '8px', '&:hover': { backgroundColor: 'transparent' } }}>
-                <AttachFileIcon />
-              </IconButton>
-            </Tooltip>
+            <div className={styles.inputRow}>
+              <button 
+                className={styles.attachButton}
+                onClick={handleAttachClick}
+                type="button"
+                title="上传文件"
+                aria-label="上传文件"
+              >
+                <AttachIcon />
+              </button>
 
-            <TextField
-              fullWidth
-              variant="standard"
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              onKeyPress={handleKeyPress}
-              InputProps={{
-                disableUnderline: true,
-                style: { color: theme.palette.text.primary },
-              }}
-              placeholder={selectedFiles.length > 0 ? "添加消息描述..." : "输入消息..."}
-              multiline
-              maxRows={5}
-              sx={{
-                flexGrow: 1,
-                '& .MuiInputBase-input': {
-                  padding: '12px 8px',
-                  '&::placeholder': { color: theme.palette.text.secondary, opacity: 0.7 },
-                },
-                '& .MuiInputBase-root': { backgroundColor: 'transparent', alignItems: 'center' },
-              }}
-            />
+              <textarea
+                ref={textAreaRef}
+                className={styles.textArea}
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                onKeyPress={handleKeyPress}
+                placeholder={selectedFiles.length > 0 ? "添加消息描述..." : "输入消息..."}
+                rows={1}
+              />
 
-            <IconButton onClick={handleSend} sx={{ color: theme.palette.primary.main, padding: '8px', '&:hover': { backgroundColor: 'transparent' } }}>
-              <SendIcon />
-            </IconButton>
-          </Box>
-        </Box>
-      </Box>
+              <button 
+                className={styles.sendButton}
+                onClick={handleSend}
+                disabled={!inputValue.trim() && selectedFiles.length === 0}
+                type="button"
+                title="发送消息"
+                aria-label="发送消息"
+              >
+                <SendIcon />
+              </button>
+            </div>
+          </div>
+        </div>
 
-      <input type="file" ref={fileInputRef} onChange={handleFileSelect} style={{ display: 'none' }} accept="image/*,.pdf,.doc,.docx,.txt" multiple />
-    </Box>
+        <input 
+          type="file" 
+          ref={fileInputRef} 
+          onChange={handleFileSelect} 
+          className={styles.hiddenInput}
+          accept="image/*,.pdf,.doc,.docx,.txt" 
+          multiple 
+        />
+      </div>
+    </div>
   );
 };
 

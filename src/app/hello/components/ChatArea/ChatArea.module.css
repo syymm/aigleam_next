@@ -1,0 +1,442 @@
+/* ChatArea Styles - OpenAI/OpenWebUI Inspired Design */
+
+.chatArea {
+  --message-user-bg: #2b5ff2;
+  --message-ai-bg: rgba(255, 255, 255, 0.95);
+  --message-ai-bg-dark: rgba(52, 53, 65, 0.95);
+  --message-error-bg: rgba(239, 68, 68, 0.1);
+  --message-error-border: rgba(239, 68, 68, 0.3);
+  --avatar-ai-bg: #f7f7f8;
+  --avatar-ai-color: #676767;
+  --avatar-user-bg: #2b5ff2;
+  --text-primary: rgba(13, 13, 13, 0.95);
+  --text-secondary: rgba(13, 13, 13, 0.65);
+  --text-primary-dark: rgba(236, 236, 241, 0.95);
+  --text-secondary-dark: rgba(236, 236, 241, 0.65);
+  --border-light: rgba(0, 0, 0, 0.1);
+  --border-dark: rgba(255, 255, 255, 0.15);
+  --shadow-light: 0 1px 3px rgba(0, 0, 0, 0.1);
+  --shadow-dark: 0 1px 3px rgba(0, 0, 0, 0.3);
+  --action-hover-bg: rgba(0, 0, 0, 0.05);
+  --action-hover-bg-dark: rgba(255, 255, 255, 0.1);
+}
+
+.container {
+  flex: 1;
+  overflow: visible; /* Let parent handle scrolling */
+  padding: 1rem;
+  padding-top: calc(1rem + 64px); /* Account for header */
+  padding-bottom: 0; /* Remove bottom padding for seamless design */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: transparent; /* Inherit from parent for seamless design */
+  min-height: 100%; /* Ensure it takes full height but can grow */
+}
+
+.container.dark {
+  background: transparent; /* Inherit from parent for seamless design */
+  --message-ai-bg: var(--message-ai-bg-dark);
+  --text-primary: var(--text-primary-dark);
+  --text-secondary: var(--text-secondary-dark);
+  --border-light: var(--border-dark);
+  --shadow-light: var(--shadow-dark);
+  --action-hover-bg: var(--action-hover-bg-dark);
+}
+
+.messagesContainer {
+  width: 100%;
+  max-width: 800px;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  flex-grow: 1; /* Allow growing but not fixed height */
+}
+
+.emptyState {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 1rem;
+  opacity: 0.6;
+  padding: 2rem;
+  text-align: center;
+}
+
+.emptyStateIcon {
+  width: 48px;
+  height: 48px;
+  opacity: 0.4;
+}
+
+.emptyStateText {
+  font-size: 1.1rem;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.emptyStateSubtext {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  opacity: 0.7;
+  margin: 0;
+}
+
+.messageGroup {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  width: 100%;
+}
+
+.messageGroup.user {
+  flex-direction: row-reverse;
+}
+
+.avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.avatar.ai {
+  background-color: var(--avatar-ai-bg);
+  color: var(--avatar-ai-color);
+}
+
+.avatar.user {
+  background-color: var(--avatar-user-bg);
+  color: white;
+}
+
+.messageContent {
+  flex: 1;
+  max-width: calc(100% - 48px);
+  position: relative;
+}
+
+.messageContent.user {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.messageBubble {
+  padding: 0.875rem 1rem;
+  border-radius: 1rem;
+  position: relative;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  white-space: pre-wrap;
+  line-height: 1.5;
+  transition: all 0.2s ease;
+  box-shadow: var(--shadow-light);
+}
+
+.messageBubble.user {
+  background: var(--message-user-bg);
+  color: white;
+  border-bottom-right-radius: 0.25rem;
+  max-width: 85%;
+}
+
+.messageBubble.ai {
+  background: var(--message-ai-bg);
+  color: var(--text-primary);
+  border: 1px solid var(--border-light);
+  border-bottom-left-radius: 0.25rem;
+  max-width: 100%;
+}
+
+.messageBubble.error {
+  background: var(--message-error-bg);
+  border: 1px solid var(--message-error-border);
+  color: #dc2626;
+  border-radius: 1rem;
+}
+
+.messageText {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+.messageText.error {
+  font-style: italic;
+  font-weight: 500;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.errorIcon {
+  color: #dc2626;
+  flex-shrink: 0;
+  margin-top: 0.125rem;
+}
+
+.filesContainer {
+  margin-top: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.filePreview {
+  padding: 0.75rem;
+  border-radius: 0.75rem;
+  border: 1px solid var(--border-light);
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.filePreview.user {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.filePreview.ai {
+  background: rgba(0, 0, 0, 0.03);
+}
+
+.filePreview:hover {
+  background: rgba(0, 0, 0, 0.05);
+  transform: translateY(-1px);
+}
+
+.filePreview.user:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.fileIcon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.fileName {
+  font-size: 0.875rem;
+  color: var(--text-primary);
+  font-weight: 500;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fileName.user {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.imagePreview {
+  max-width: 300px;
+  max-height: 200px;
+  border-radius: 0.5rem;
+  object-fit: cover;
+  transition: transform 0.2s ease;
+}
+
+.imagePreview:hover {
+  transform: scale(1.02);
+}
+
+.messageActions {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-top: 0.5rem;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.2s ease;
+}
+
+.messageContent:hover .messageActions {
+  opacity: 1;
+  visibility: visible;
+}
+
+.actionButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: var(--text-secondary);
+}
+
+.actionButton:hover {
+  background: var(--action-hover-bg);
+  color: var(--text-primary);
+  transform: scale(1.05);
+}
+
+.actionButton:active {
+  transform: scale(0.95);
+}
+
+.actionButton.like:hover {
+  color: #10b981;
+  background: rgba(16, 185, 129, 0.1);
+}
+
+.actionButton.dislike:hover {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.actionButton.quote:hover {
+  color: #3b82f6;
+  background: rgba(59, 130, 246, 0.1);
+}
+
+.loadingContainer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 1rem;
+}
+
+.loadingSpinner {
+  width: 24px;
+  height: 24px;
+  border: 2px solid var(--border-light);
+  border-top-color: var(--message-user-bg);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.popover {
+  position: fixed;
+  background: white;
+  border: 1px solid var(--border-light);
+  border-radius: 0.5rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  padding: 0.5rem;
+  z-index: 1000;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.popover.dark {
+  background: #374151;
+  border-color: var(--border-dark);
+  color: var(--text-primary-dark);
+}
+
+.quoteButton {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border: none;
+  background: transparent;
+  border-radius: 0.375rem;
+  cursor: pointer;
+  font-size: 0.875rem;
+  color: var(--text-primary);
+  transition: background-color 0.2s ease;
+}
+
+.quoteButton:hover {
+  background: var(--action-hover-bg);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .container {
+    padding: 0.75rem;
+    padding-top: calc(0.75rem + 56px);
+  }
+  
+  .messagesContainer {
+    gap: 1rem;
+  }
+  
+  .messageBubble {
+    padding: 0.75rem;
+    font-size: 0.875rem;
+  }
+  
+  .messageBubble.user {
+    max-width: 90%;
+  }
+  
+  .avatar {
+    width: 28px;
+    height: 28px;
+    font-size: 0.75rem;
+  }
+  
+  .imagePreview {
+    max-width: 250px;
+    max-height: 150px;
+  }
+}
+
+@media (max-width: 480px) {
+  .messageGroup {
+    gap: 0.5rem;
+  }
+  
+  .messageBubble.user {
+    max-width: 95%;
+  }
+  
+  .messageActions {
+    gap: 0.125rem;
+  }
+  
+  .actionButton {
+    width: 28px;
+    height: 28px;
+  }
+}
+
+/* Custom scrollbar */
+.container::-webkit-scrollbar {
+  width: 8px;
+}
+
+.container::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.container::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+}
+
+.container::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.container.dark::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.container.dark::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}

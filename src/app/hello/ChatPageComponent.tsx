@@ -535,14 +535,18 @@ const ChatPageComponent: React.FC = () => {
       />
       <Main open={open}>
         <div className={`${styles.mainContent} ${styles[themeMode]}`}>
-          <ChatArea
-            messages={currentConversationId ? messagesMap[currentConversationId] || [] : []}
-            onBestResponse={handleBestResponse}
-            onErrorResponse={handleErrorResponse}
-            onQuoteReply={handleQuoteReply}
-            isLoading={isLoading}
-          />
-          <InputArea onSendMessage={handleSendMessage} />
+          <div className={styles.chatContainer}>
+            <ChatArea
+              messages={currentConversationId ? messagesMap[currentConversationId] || [] : []}
+              onBestResponse={handleBestResponse}
+              onErrorResponse={handleErrorResponse}
+              onQuoteReply={handleQuoteReply}
+              isLoading={isLoading}
+            />
+          </div>
+          <div className={`${styles.inputContainer} ${styles[themeMode]}`}>
+            <InputArea onSendMessage={handleSendMessage} />
+          </div>
         </div>
       </Main>
       
