@@ -656,8 +656,7 @@ export async function POST(request: Request) {
       }
     }
 
-    // 调用 OpenAI，流式返回响应
-    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    // 调用 OpenAI，流式返回响应（复用之前创建的 openai 实例）
     const response = await openai.chat.completions.create({
       model,
       messages,
