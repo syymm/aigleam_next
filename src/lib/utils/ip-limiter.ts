@@ -46,7 +46,8 @@ class SimpleIPLimiter {
   // 清理过期记录
   cleanup(): void {
     const now = Date.now();
-    for (const [ip, record] of this.records.entries()) {
+    const entries = Array.from(this.records.entries());
+    for (const [ip, record] of entries) {
       if (record.blockedUntil && now > record.blockedUntil) {
         this.records.delete(ip);
       }

@@ -7,7 +7,7 @@ export function getClientIP(request: NextRequest): string {
   const clientIP = request.headers.get('x-client-ip');
   
   if (forwarded) {
-    return forwarded.split(',')[0].trim();
+    return forwarded.split(',')[0]?.trim() || '127.0.0.1';
   }
   
   if (realIP) {

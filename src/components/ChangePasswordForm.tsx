@@ -289,10 +289,10 @@ export default function ChangePasswordForm({ onSuccess, onError }: ChangePasswor
                       密码强度:
                     </Typography>
                     <Chip 
-                      label={passwordStrength.level.label}
+                      label={passwordStrength.level?.label || ''}
                       size="small"
                       sx={{ 
-                        backgroundColor: passwordStrength.level.color,
+                        backgroundColor: passwordStrength.level?.color || 'grey',
                         color: 'white',
                         fontWeight: 'bold'
                       }}
@@ -301,13 +301,13 @@ export default function ChangePasswordForm({ onSuccess, onError }: ChangePasswor
                   
                   <LinearProgress
                     variant="determinate"
-                    value={passwordStrength.level.progress}
+                    value={passwordStrength.level?.progress || 0}
                     sx={{
                       height: 8,
                       borderRadius: 4,
                       backgroundColor: 'rgba(0,0,0,0.1)',
                       '& .MuiLinearProgress-bar': {
-                        backgroundColor: passwordStrength.level.color,
+                        backgroundColor: passwordStrength.level?.color || 'grey',
                         borderRadius: 4,
                       }
                     }}
