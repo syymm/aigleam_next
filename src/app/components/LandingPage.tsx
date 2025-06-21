@@ -1,26 +1,65 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 export default function LandingPage() {
   const router = useRouter();
   const [email, setEmail] = useState('');
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isChecking, setIsChecking] = useState(true);
+
+  // 检查认证状态
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const response = await fetch('/api/check-auth', {
+          method: 'GET',
+          credentials: 'include',
+        });
+        
+        if (response.ok) {
+          setIsAuthenticated(true);
+          // 如果已认证，直接跳转到聊天页
+          router.replace('/hello');
+          return;
+        }
+      } catch (error) {
+        console.log('Auth check failed:', error);
+      } finally {
+        setIsChecking(false);
+      }
+    };
+
+    checkAuth();
+  }, [router]);
 
   const handleGetStarted = () => {
+    if (isChecking) return;
     router.push('/register');
   };
 
   const handleSignIn = () => {
+    if (isChecking) return;
     router.push('/login');
   };
 
   const handleEmailSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (isChecking) return;
     if (email) {
       router.push(`/register?email=${encodeURIComponent(email)}`);
     }
   };
+
+  // 如果正在检查认证状态，显示加载状态
+  if (isChecking) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
+        <div className="text-white text-xl">加载中...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
