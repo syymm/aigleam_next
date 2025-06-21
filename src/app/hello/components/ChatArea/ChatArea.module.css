@@ -1,22 +1,24 @@
 /* ChatArea Styles - OpenAI/OpenWebUI Inspired Design */
 
 .chatArea {
-  --message-user-bg: #2b5ff2;
-  --message-ai-bg: rgba(255, 255, 255, 0.95);
-  --message-ai-bg-dark: rgba(52, 53, 65, 0.95);
+  --message-user-bg: #f4f4f4;
+  --message-user-bg-dark: #2f2f2f;
+  --message-ai-bg: transparent;
+  --message-ai-bg-dark: transparent;
   --message-error-bg: rgba(239, 68, 68, 0.1);
   --message-error-border: rgba(239, 68, 68, 0.3);
-  --avatar-ai-bg: #f7f7f8;
-  --avatar-ai-color: #676767;
-  --avatar-user-bg: #2b5ff2;
-  --text-primary: rgba(13, 13, 13, 0.95);
+  --avatar-ai-bg: #19c37d;
+  --avatar-ai-color: white;
+  --avatar-user-bg: #ab68ff;
+  --avatar-user-color: white;
+  --text-primary: #353740;
   --text-secondary: rgba(13, 13, 13, 0.65);
-  --text-primary-dark: rgba(236, 236, 241, 0.95);
+  --text-primary-dark: #ececf1;
   --text-secondary-dark: rgba(236, 236, 241, 0.65);
   --border-light: rgba(0, 0, 0, 0.1);
   --border-dark: rgba(255, 255, 255, 0.15);
-  --shadow-light: 0 1px 3px rgba(0, 0, 0, 0.1);
-  --shadow-dark: 0 1px 3px rgba(0, 0, 0, 0.3);
+  --shadow-light: none;
+  --shadow-dark: none;
   --action-hover-bg: rgba(0, 0, 0, 0.05);
   --action-hover-bg-dark: rgba(255, 255, 255, 0.1);
 }
@@ -36,6 +38,7 @@
 
 .container.dark {
   background: transparent; /* Inherit from parent for seamless design */
+  --message-user-bg: var(--message-user-bg-dark);
   --message-ai-bg: var(--message-ai-bg-dark);
   --text-primary: var(--text-primary-dark);
   --text-secondary: var(--text-secondary-dark);
@@ -46,10 +49,10 @@
 
 .messagesContainer {
   width: 100%;
-  max-width: 800px;
+  max-width: 768px;
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 1rem;
   flex-grow: 1; /* Allow growing but not fixed height */
 }
 
@@ -87,8 +90,9 @@
 .messageGroup {
   display: flex;
   align-items: flex-start;
-  gap: 0.75rem;
+  gap: 0.5rem;
   width: 100%;
+  margin-bottom: 0.5rem;
 }
 
 .messageGroup.user {
@@ -96,14 +100,14 @@
 }
 
 .avatar {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  border-radius: 2px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  font-size: 0.875rem;
+  font-size: 0.75rem;
   font-weight: 600;
   transition: all 0.2s ease;
 }
@@ -115,12 +119,12 @@
 
 .avatar.user {
   background-color: var(--avatar-user-bg);
-  color: white;
+  color: var(--avatar-user-color);
 }
 
 .messageContent {
   flex: 1;
-  max-width: calc(100% - 48px);
+  max-width: calc(100% - 40px);
   position: relative;
 }
 
@@ -131,8 +135,8 @@
 }
 
 .messageBubble {
-  padding: 0.875rem 1rem;
-  border-radius: 1rem;
+  padding: 0.75rem 1rem;
+  border-radius: 0.75rem;
   position: relative;
   word-wrap: break-word;
   overflow-wrap: break-word;
@@ -144,16 +148,14 @@
 
 .messageBubble.user {
   background: var(--message-user-bg);
-  color: white;
-  border-bottom-right-radius: 0.25rem;
-  max-width: 85%;
+  color: var(--text-primary);
+  max-width: 75%;
 }
 
 .messageBubble.ai {
   background: var(--message-ai-bg);
   color: var(--text-primary);
-  border: 1px solid var(--border-light);
-  border-bottom-left-radius: 0.25rem;
+  border: none;
   max-width: 100%;
 }
 
@@ -166,8 +168,8 @@
 
 .messageText {
   margin: 0;
-  font-size: 0.9rem;
-  line-height: 1.6;
+  font-size: 1rem;
+  line-height: 1.5;
 }
 
 .messageText.error {
@@ -255,8 +257,8 @@
 .messageActions {
   display: flex;
   align-items: center;
-  gap: 0.25rem;
-  margin-top: 0.5rem;
+  gap: 0.125rem;
+  margin-top: 0.25rem;
   opacity: 0;
   visibility: hidden;
   transition: all 0.2s ease;
@@ -271,11 +273,11 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   border: none;
   background: transparent;
-  border-radius: 0.5rem;
+  border-radius: 0.375rem;
   cursor: pointer;
   transition: all 0.2s ease;
   color: var(--text-secondary);
