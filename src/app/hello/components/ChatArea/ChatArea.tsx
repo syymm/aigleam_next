@@ -287,7 +287,11 @@ const ChatArea: React.FC<ChatAreaProps> = ({
           })}
           {isLoading && (
             <div className={styles.loadingContainer}>
-              <div className={styles.loadingSpinner} />
+              <div className={styles.breathingDots}>
+                <div className={styles.breathingDot}></div>
+                <div className={styles.breathingDot}></div>
+                <div className={styles.breathingDot}></div>
+              </div>
             </div>
           )}
           <div ref={messagesEndRef} />
