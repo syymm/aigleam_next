@@ -1,52 +1,8 @@
 import React, { useState, useRef, ChangeEvent, useEffect } from 'react';
 import styles from './InputArea.module.css';
 import { useTheme } from '../../../contexts/ThemeContext';
-
-// Custom SVG Icons
-const SendIcon: React.FC<{ className?: string; style?: React.CSSProperties }> = ({ className, style }) => (
-  <svg className={className} style={style} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <line x1="22" y1="2" x2="11" y2="13"></line>
-    <polygon points="22,2 15,22 11,13 2,9 22,2"></polygon>
-  </svg>
-);
-
-const AttachIcon: React.FC<{ className?: string; style?: React.CSSProperties }> = ({ className, style }) => (
-  <svg className={className} style={style} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66L9.64 16.2a2 2 0 0 1-2.83-2.83l8.49-8.49"></path>
-  </svg>
-);
-
-const CloseIcon: React.FC<{ className?: string; style?: React.CSSProperties }> = ({ className, style }) => (
-  <svg className={className} style={style} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <line x1="18" y1="6" x2="6" y2="18"></line>
-    <line x1="6" y1="6" x2="18" y2="18"></line>
-  </svg>
-);
-
-const ImageIcon: React.FC<{ className?: string; style?: React.CSSProperties }> = ({ className, style }) => (
-  <svg className={className} style={style} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-    <circle cx="8.5" cy="8.5" r="1.5"></circle>
-    <polyline points="21,15 16,10 5,21"></polyline>
-  </svg>
-);
-
-const DocumentIcon: React.FC<{ className?: string; style?: React.CSSProperties }> = ({ className, style }) => (
-  <svg className={className} style={style} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-    <polyline points="14,2 14,8 20,8"></polyline>
-    <line x1="16" y1="13" x2="8" y2="13"></line>
-    <line x1="16" y1="17" x2="8" y2="17"></line>
-    <polyline points="10,9 9,9 8,9"></polyline>
-  </svg>
-);
-
-const FileIcon: React.FC<{ className?: string; style?: React.CSSProperties }> = ({ className, style }) => (
-  <svg className={className} style={style} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path>
-    <polyline points="13,2 13,9 20,9"></polyline>
-  </svg>
-);
+import { SendIcon, AttachIcon, CloseIcon } from '../shared/Icons';
+import { getFileIconForInput } from '../shared/fileUtils';
 
 interface InputAreaProps {
   onSendMessage: (message: string, files: File[]) => void;
@@ -148,16 +104,6 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
     }
   };
 
-  const getFileIcon = (fileType: string) => {
-    if (fileType.startsWith('image/')) {
-      return <ImageIcon className={styles.fileIcon} style={{ color: '#4CAF50' }} />;
-    } else if (fileType.includes('pdf')) {
-      return <DocumentIcon className={styles.fileIcon} style={{ color: '#F44336' }} />;
-    } else if (fileType.includes('document') || fileType.includes('text')) {
-      return <DocumentIcon className={styles.fileIcon} style={{ color: '#2196F3' }} />;
-    }
-    return <FileIcon className={styles.fileIcon} style={{ color: '#757575' }} />;
-  };
 
   return (
     <div className={styles.inputArea}>
@@ -183,7 +129,7 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
               <div className={styles.filesContainer}>
                 {selectedFiles.map((file, index) => (
                   <div key={`${file.name}-${index}`} className={styles.fileChip}>
-                    {getFileIcon(file.type)}
+                    {getFileIconForInput(file.type, styles.fileIcon)}
                     <span className={styles.fileName}>
                       {file.name}
                     </span>
