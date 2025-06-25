@@ -263,7 +263,28 @@ const ChatArea: React.FC<ChatAreaProps> = ({
               <p className={styles.emptyStateSubtext}>输入消息开始与AI助手对话</p>
             </div>
           )}
-          {messages.map((message, index) => renderMessage(message, index))}
+          {messages.map((message, index) => {
+            // 对于空内容的AI消息，显示输入指示器
+            if (!message.isUser && !message.content && !message.isError) {
+              return (
+                <div key={message.id} className={`${styles.messageGroup} ${styles.ai}`}>
+                  <div className={styles.messageWrapper}>
+                    <div className={styles.avatar}>
+                      <BotIcon className={styles.avatarIcon} />
+                    </div>
+                    <div className={styles.messageContent}>
+                      <div className={styles.typingIndicator}>
+                        <div className={styles.typingDot}></div>
+                        <div className={styles.typingDot}></div>
+                        <div className={styles.typingDot}></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            }
+            return renderMessage(message, index);
+          })}
           {isLoading && (
             <div className={styles.loadingContainer}>
               <div className={styles.loadingSpinner} />

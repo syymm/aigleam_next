@@ -4,6 +4,11 @@ import type { ChatCompletionMessageParam } from 'openai/resources/chat/completio
 import { prisma } from '@/lib/prisma';
 import { getCurrentUserId } from '@/lib/auth';
 import { encoding_for_model, TiktokenModel } from 'tiktoken';
+import { memoryManager } from '@/lib/memoryManager';
+import { userProfileSystem } from '@/lib/userProfileSystem';
+import { semanticMemorySystem } from '@/lib/memorySystem';
+import { crossSessionMemorySystem } from '@/lib/crossSessionMemory';
+import { intelligentForgettingSystem } from '@/lib/forgettingSystem';
 
 // 如果 ChatCompletionMessageParam 里没有 name，可以在本地扩展：
 type ExtendedChatCompletionMessageParam = ChatCompletionMessageParam & {
@@ -485,14 +490,40 @@ export async function POST(request: Request) {
     const conversationHistory = await getConversationHistory(conversationId);
 
     // 第一步：快速保存用户消息（短事务）
-    await prisma.message.create({
+    const userMessage = await prisma.message.create({
       data: {
         content: message,
         isUser: true,
         conversationId,
         prompt: prompt?.content,
         promptName: prompt?.name,
+        importanceScore: calculateMessageScore({
+          content: message,
+          isUser: true,
+          createdAt: new Date()
+        }),
       },
+    });
+
+    // 异步处理记忆系统（不阻塞主要流程）
+    Promise.resolve().then(async () => {
+      try {
+        // 初始化用户画像
+        await userProfileSystem.initializeUserProfile(userId);
+        
+        // 处理用户消息的记忆存储
+        await memoryManager.processMessage(
+          userId,
+          conversationId,
+          userMessage.id,
+          message,
+          true,
+          userMessage.importanceScore
+        );
+      } catch (memoryError) {
+        console.error('Memory processing error:', memoryError);
+        // 记忆系统错误不影响主要聊天功能
+      }
     });
 
     // 第二步：处理文件上传（在事务外，避免长时间锁定）
@@ -630,8 +661,67 @@ export async function POST(request: Request) {
       }
     }
 
-    // 第三步：构建AI对话上下文
-    let finalMessages = buildOptimizedContext(systemPrompt, conversationHistory, message, model);
+    // 第三步：快速获取基础记忆上下文（超时保护）
+    let enhancedSystemPrompt = systemPrompt;
+    let contextMemories: any[] = [];
+    
+    try {
+      // 设置5秒超时，避免记忆系统阻塞响应
+      const memoryPromise = Promise.race([
+        (async () => {
+          // 获取用户个性化信息
+          const userPersonalization = await userProfileSystem.getUserPersonalization(userId);
+          
+          // 仅获取关键记忆，减少查询复杂度
+          const [crossSessionContext, memoryLayers] = await Promise.all([
+            crossSessionMemorySystem.getCrossSessionContext({
+              userId,
+              currentConversationId: conversationId,
+              query: message,
+              contextWindow: 3 // 减少到3个
+            }),
+            memoryManager.getMemoryLayers(userId, conversationId, message)
+          ]);
+          
+          return { userPersonalization, crossSessionContext, memoryLayers };
+        })(),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Memory timeout')), 3000) // 3秒超时
+        )
+      ]);
+
+      const { userPersonalization, crossSessionContext, memoryLayers } = await memoryPromise as any;
+      
+      // 构建轻量级的系统提示
+      if (userPersonalization.preferences?.communicationStyle) {
+        const personalityPrompt = `\n用户偏好：${userPersonalization.preferences.communicationStyle}风格`;
+        enhancedSystemPrompt = systemPrompt 
+          ? `${systemPrompt}${personalityPrompt}`
+          : personalityPrompt;
+      }
+      
+      // 只添加最重要的记忆上下文
+      contextMemories = [
+        ...memoryLayers.longTerm.slice(0, 2),
+        ...crossSessionContext.slice(0, 1)
+      ];
+      
+      if (contextMemories.length > 0) {
+        const memoryContext = contextMemories
+          .map(memory => `[记忆] ${(memory.summary || memory.content).substring(0, 50)}`)
+          .join('\n');
+        
+        enhancedSystemPrompt = enhancedSystemPrompt 
+          ? `${enhancedSystemPrompt}\n\n${memoryContext}`
+          : memoryContext;
+      }
+    } catch (memoryError) {
+      console.error('Memory context enhancement error (using fallback):', memoryError);
+      // 记忆增强失败时使用原始系统提示，不影响响应速度
+    }
+
+    // 构建AI对话上下文
+    let finalMessages = buildOptimizedContext(enhancedSystemPrompt, conversationHistory, message, model);
     // 将文件信息追加到最后一条用户消息并检查token限制
     let messages = finalMessages;
     if (appendedFileInfo && messages.length > 0) {
@@ -684,13 +774,18 @@ export async function POST(request: Request) {
 
             // 流结束后保存 AI 回复到数据库（分开执行，避免事务）
             try {
-              await prisma.message.create({
+              const assistantMessage = await prisma.message.create({
                 data: {
                   content: fullResponse,
                   isUser: false,
                   conversationId,
                   prompt: prompt?.content,
                   promptName: prompt?.name,
+                  importanceScore: calculateMessageScore({
+                    content: fullResponse,
+                    isUser: false,
+                    createdAt: new Date()
+                  }),
                 },
               });
 
@@ -698,6 +793,32 @@ export async function POST(request: Request) {
               await prisma.conversation.update({
                 where: { id: conversationId },
                 data: { updatedAt: new Date() },
+              });
+
+              // 异步处理AI回复的记忆存储（不阻塞响应）
+              Promise.resolve().then(async () => {
+                try {
+                  await memoryManager.processMessage(
+                    userId,
+                    conversationId,
+                    assistantMessage.id,
+                    fullResponse,
+                    false,
+                    assistantMessage.importanceScore
+                  );
+
+                  // 强化相关记忆
+                  for (const memory of contextMemories) {
+                    await crossSessionMemorySystem.reinforceMemory(memory.id, 0.5);
+                  }
+
+                  // 定期记忆维护（5%概率）
+                  if (Math.random() < 0.05) {
+                    intelligentForgettingSystem.processMemoryDecay(userId);
+                  }
+                } catch (memoryError) {
+                  console.error('AI response memory processing error:', memoryError);
+                }
               });
             } catch (dbError) {
               console.error('保存AI回复失败:', dbError);
