@@ -505,3 +505,48 @@
 .container.dark::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.3);
 }
+
+/* AI Generated Image Styles */
+.imageMessage {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin: 0.5rem 0;
+}
+
+.imagePrompt {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  font-style: italic;
+  opacity: 0.8;
+  padding: 0.25rem 0;
+}
+
+.generatedImage {
+  max-width: 100%;
+  max-height: 400px;
+  width: auto;
+  height: auto;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.generatedImage:hover {
+  transform: scale(1.02);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+}
+
+/* Dark theme adjustments for generated images */
+.container.dark .generatedImage {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.container.dark .generatedImage:hover {
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+}
+
+.container.dark .imagePrompt {
+  color: var(--text-secondary-dark);
+}

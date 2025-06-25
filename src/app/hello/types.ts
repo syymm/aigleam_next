@@ -17,6 +17,9 @@ export interface Message {
   fileType?: string;
   fileUrl?: string;
   isError?: boolean; // 前端用于标识加载状态，不存储到数据库
+  isImage?: boolean; // 标记是否为AI生成图像
+  imageUrl?: string; // AI生成图像的URL
+  imagePrompt?: string; // 生成图像的提示词
 }
 
 // 对话接口

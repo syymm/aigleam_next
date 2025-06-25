@@ -126,6 +126,60 @@ const ChatPageComponent: React.FC = () => {
     retryCount: number = 0
   ) => {
     try {
+      // 检查是否为图像生成响应
+      const contentType = response.headers.get('content-type');
+      console.log('🔍 Response content-type:', contentType);
+      console.log('🔍 Response status:', response.status);
+      
+      if (contentType?.includes('application/json')) {
+        // 处理图像生成响应
+        const responseText = await response.text();
+        console.log('🔍 Raw response text:', responseText);
+        
+        let imageData;
+        try {
+          imageData = JSON.parse(responseText);
+          console.log('✅ Image data received:', imageData);
+        } catch (e) {
+          console.error('❌ Failed to parse JSON:', e);
+          console.log('❌ Response text was:', responseText);
+          throw new Error('JSON解析失败');
+        }
+        
+        if (imageData.type === 'image' && imageData.url) {
+          console.log('🖼️ Processing image response with URL:', imageData.url);
+          setIsLoading(false);
+          
+          // 更新现有的AI消息为图像消息
+          setMessagesMap(prevMap => {
+            const messages = prevMap[conversationId] || [];
+            const updatedMessages = messages.map(msg =>
+              msg.id === messageId 
+                ? { 
+                    ...msg, 
+                    content: `图像已生成: ${imageData.prompt}`,
+                    imageUrl: imageData.url,
+                    isImage: true,
+                    imagePrompt: imageData.prompt
+                  }
+                : msg
+            );
+            
+            console.log('📋 Updated message with image data');
+            
+            return {
+              ...prevMap,
+              [conversationId]: updatedMessages
+            };
+          });
+          return;
+        } else {
+          console.log('❌ Invalid image data format:', imageData);
+          throw new Error('图像数据格式无效');
+        }
+      }
+
+      // 处理流式文本响应（原有逻辑）
       const reader = response.body?.getReader();
       const decoder = new TextDecoder();
 

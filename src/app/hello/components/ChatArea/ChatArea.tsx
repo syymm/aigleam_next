@@ -92,6 +92,9 @@ interface Message {
   fileType?: string;
   fileUrl?: string;
   isError?: boolean;
+  isImage?: boolean; // 标记是否为AI生成图像
+  imageUrl?: string; // AI生成图像的URL
+  imagePrompt?: string; // 生成图像的提示词
 }
 
 interface ChatAreaProps {
@@ -192,10 +195,40 @@ const ChatArea: React.FC<ChatAreaProps> = ({
             className={`${styles.messageBubble} ${message.isUser ? styles.user : styles.ai} ${message.isError ? styles.error : ''}`}
             onMouseUp={handleTextSelection}
           >
+            {/* AI生成的图像 */}
+            {message.isImage && message.imageUrl && (
+              <div className={styles.imageMessage}>
+                {message.imagePrompt && (
+                  <div className={styles.imagePrompt}>
+                    提示词: {message.imagePrompt}
+                  </div>
+                )}
+                <img
+                  src={message.imageUrl}
+                  alt={message.imagePrompt || '生成的图像'}
+                  className={styles.generatedImage}
+                  onLoad={() => {
+                    console.log('🖼️ 图像加载成功:', message.imageUrl);
+                  }}
+                  onError={(e) => {
+                    console.error('❌ 图像加载失败:', message.imageUrl);
+                    e.currentTarget.style.display = 'none';
+                  }}
+                />
+              </div>
+            )}
+
             {/* Text Content */}
-            {message.content && !message.content.startsWith('已上传') && (
+            {message.content && !message.content.startsWith('已上传') && !message.isImage && (
               <div className={`${styles.messageText} ${message.isError ? styles.error : ''}`}>
                 {message.isError && <ErrorIcon className={styles.errorIcon} />}
+                <span>{message.content}</span>
+              </div>
+            )}
+
+            {/* Text Content for Image Messages */}
+            {message.isImage && message.content && (
+              <div className={styles.messageText}>
                 <span>{message.content}</span>
               </div>
             )}

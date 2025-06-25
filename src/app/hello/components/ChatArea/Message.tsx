@@ -14,6 +14,9 @@ interface MessageProps {
   fileName?: string;
   fileType?: string;
   fileUrl?: string;
+  isImage?: boolean; // 新增：标记是否为AI生成图像
+  imageUrl?: string; // 新增：AI生成图像的URL
+  imagePrompt?: string; // 新增：生成图像的提示词
   onBestResponse?: () => void;
   onErrorResponse?: () => void;
   onTextSelect?: (event: React.MouseEvent<HTMLDivElement>) => void;
@@ -59,6 +62,9 @@ const Message: React.FC<MessageProps> = ({
   fileName,
   fileType,
   fileUrl,
+  isImage,
+  imageUrl,
+  imagePrompt,
   onBestResponse,
   onErrorResponse,
   onTextSelect,
@@ -87,7 +93,39 @@ const Message: React.FC<MessageProps> = ({
       }}
     >
       <MessagePaper elevation={1} onMouseUp={onTextSelect}>
-        {!isFileMessage && (
+        {/* AI生成的图像 */}
+        {isImage && imageUrl && (
+          <Box>
+            {imagePrompt && (
+              <Typography 
+                variant="body2" 
+                color="text.secondary"
+                sx={{ mb: 1, fontStyle: 'italic' }}
+              >
+                提示词: {imagePrompt}
+              </Typography>
+            )}
+            <Box 
+              component="img"
+              src={imageUrl}
+              alt={imagePrompt || '生成的图像'}
+              sx={{
+                maxWidth: '100%',
+                maxHeight: '400px',
+                borderRadius: 2,
+                display: 'block',
+                boxShadow: 2,
+              }}
+              onError={(e) => {
+                console.error('图像加载失败:', imageUrl);
+                e.currentTarget.style.display = 'none';
+              }}
+            />
+          </Box>
+        )}
+        
+        {/* 普通文本消息 */}
+        {!isFileMessage && !isImage && (
           <Typography 
             color="text.primary"
             sx={{

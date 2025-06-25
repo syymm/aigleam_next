@@ -24,7 +24,7 @@ const ModelSelect: React.FC<ModelSelectProps> = ({ selectedModel, setSelectedMod
     {
       value: 'gpt-4-turbo',
       label: 'GPT-4-turbo',
-      description: '最新的GPT-4模型，反应更快，知识更新'
+      description: '强大的GPT-4模型，反应快速，知识更新'
     },
     {
       value: 'gpt-4',
@@ -34,7 +34,52 @@ const ModelSelect: React.FC<ModelSelectProps> = ({ selectedModel, setSelectedMod
     {
       value: 'gpt-4o',
       label: 'GPT-4o',
-      description: '更强大的AI助手，支持多模态交互'
+      description: '强大的AI助手，支持多模态交互'
+    },
+    {
+      value: 'gpt-4.1',
+      label: 'GPT-4.1',
+      description: '最先进的GPT模型，支持100万token上下文，编程能力大幅提升'
+    },
+    {
+      value: 'gpt-4.1-mini',
+      label: 'GPT-4.1-mini',
+      description: '轻量版GPT-4.1，性能优异且经济实惠'
+    },
+    {
+      value: 'gpt-4.1-nano',
+      label: 'GPT-4.1-nano',
+      description: '超轻量版GPT-4.1，快速响应，适合简单任务'
+    },
+    {
+      value: 'o1-preview',
+      label: 'o1-preview',
+      description: '强大的推理模型预览版，专为解决复杂问题设计'
+    },
+    {
+      value: 'o1-mini',
+      label: 'o1-mini',
+      description: '轻量级推理模型，速度快且经济实惠'
+    },
+    {
+      value: 'o3-mini',
+      label: 'o3-mini',
+      description: '最新推理模型，擅长逻辑推理和复杂问题解决'
+    },
+    {
+      value: 'gpt-image-1',
+      label: 'GPT-image-1',
+      description: '最新图像生成模型，支持文本渲染和图像编辑'
+    },
+    {
+      value: 'dall-e-3',
+      label: 'DALL-E 3',
+      description: '强大的图像生成模型，创造力丰富'
+    },
+    {
+      value: 'whisper-1',
+      label: 'Whisper',
+      description: '音频转录和翻译模型，支持多种语言'
     }
   ];
 

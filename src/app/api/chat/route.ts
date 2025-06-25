@@ -31,6 +31,15 @@ function getModelTokenLimit(model: string): number {
     'gpt-4-turbo': 128000,
     'gpt-4o': 128000,
     'gpt-4o-mini': 128000,
+    'gpt-4.1': 1000000,
+    'gpt-4.1-mini': 128000,
+    'gpt-4.1-nano': 128000,
+    'o1-preview': 128000,
+    'o1-mini': 128000,
+    'o3-mini': 128000,
+    'gpt-image-1': 4096,
+    'dall-e-3': 4096,
+    'whisper-1': 4096,
   };
   
   const totalLimit = limits[model] || 4096;
@@ -396,7 +405,12 @@ export async function POST(request: Request) {
     }
     
     // 验证模型白名单
-    const allowedModels = ['gpt-3.5-turbo', 'gpt-4', 'gpt-4-turbo', 'gpt-4o', 'gpt-4o-mini'];
+    const allowedModels = [
+      'gpt-3.5-turbo', 'gpt-4', 'gpt-4-turbo', 'gpt-4o', 'gpt-4o-mini',
+      'gpt-4.1', 'gpt-4.1-mini', 'gpt-4.1-nano',
+      'o1-preview', 'o1-mini', 'o3-mini',
+      'gpt-image-1', 'dall-e-3', 'whisper-1'
+    ];
     const model = allowedModels.includes(modelRaw) ? modelRaw : 'gpt-3.5-turbo';
     
     const message = messageRaw.trim();
@@ -506,15 +520,15 @@ export async function POST(request: Request) {
     });
 
     // 异步处理记忆系统（不阻塞主要流程）
-    if (process.env.ENABLE_ADVANCED_MEMORY !== 'false') {
+    if (false && process.env.ENABLE_ADVANCED_MEMORY !== 'false' && userId) {
       Promise.resolve().then(async () => {
         try {
           // 初始化用户画像
-          await userProfileSystem.initializeUserProfile(userId);
+          await userProfileSystem.initializeUserProfile(userId as number);
           
           // 处理用户消息的记忆存储
           await memoryManager.processMessage(
-            userId,
+            userId as number,
             conversationId,
             userMessage.id,
             message,
@@ -668,8 +682,9 @@ export async function POST(request: Request) {
     let contextMemories: any[] = [];
     
     // 检查是否启用高级记忆功能
-    const enableAdvancedMemory = process.env.ENABLE_ADVANCED_MEMORY !== 'false';
-    const memoryTimeout = parseInt(process.env.MEMORY_TIMEOUT_MS || '1000');
+    const enableAdvancedMemory = false; // 临时完全禁用内存系统
+    process.env.ENABLE_ADVANCED_MEMORY = 'false'; // 确保所有地方都禁用
+    const memoryTimeout = parseInt(process.env.MEMORY_TIMEOUT_MS || '10000');
     
     if (enableAdvancedMemory) {
       try {
@@ -756,12 +771,142 @@ export async function POST(request: Request) {
       }
     }
 
-    // 调用 OpenAI，流式返回响应（复用之前创建的 openai 实例）
+    // 检测是否为图像生成模型
+    const isImageModel = ['gpt-image-1', 'dall-e-3'].includes(model);
+    
+    if (isImageModel) {
+      // 图像生成逻辑 - 提取最后一条消息的文本内容
+      let imagePrompt: string;
+      
+      const lastMessage = messages[messages.length - 1];
+      if (lastMessage && typeof lastMessage.content === 'string') {
+        imagePrompt = lastMessage.content.trim();
+      } else {
+        imagePrompt = message.trim();
+      }
+      
+      // 验证提示词不为空且合理
+      if (!imagePrompt || imagePrompt.length < 3) {
+        return NextResponse.json({ 
+          error: '请提供有效的图像生成描述（至少3个字符）' 
+        }, { status: 400 });
+      }
+      
+      // 限制提示词长度
+      if (imagePrompt.length > 1000) {
+        imagePrompt = imagePrompt.substring(0, 1000);
+      }
+      
+      try {
+        const imageResponse = await openai.images.generate({
+          model: 'dall-e-3', // 统一使用 dall-e-3
+          prompt: imagePrompt,
+          size: '1024x1024', // 使用稳定的尺寸
+          quality: 'standard', // 使用标准质量避免额外费用
+          n: 1,
+        });
+
+        const imageUrl = imageResponse.data[0]?.url;
+        
+        if (!imageUrl) {
+          throw new Error('图像生成失败，请重试');
+        }
+
+        // 保存AI生成的图像消息到数据库
+        try {
+          const assistantMessage = await prisma.message.create({
+            data: {
+              content: `[图像生成] ${imagePrompt}`,
+              isUser: false,
+              conversationId,
+              prompt: prompt?.content,
+              promptName: prompt?.name,
+              importanceScore: calculateMessageScore({
+                content: `[图像生成] ${imagePrompt}`,
+                isUser: false,
+                createdAt: new Date()
+              }),
+            },
+          });
+
+          // 更新会话时间
+          await prisma.conversation.update({
+            where: { id: conversationId },
+            data: { updatedAt: new Date() },
+          });
+
+          // 异步处理图像消息的记忆存储（不阻塞响应）
+          // 临时禁用图像消息的内存处理以避免外键约束问题
+          if (false && process.env.ENABLE_ADVANCED_MEMORY !== 'false' && userId) {
+            Promise.resolve().then(async () => {
+              try {
+                // 为图像生成添加超时保护
+                await Promise.race([
+                  memoryManager.processMessage(
+                    userId as number,
+                    conversationId,
+                    assistantMessage.id,
+                    `图像生成: ${imagePrompt}`,
+                    false,
+                    prompt?.content
+                  ),
+                  new Promise((_, reject) => 
+                    setTimeout(() => reject(new Error('Image memory timeout')), 5000)
+                  )
+                ]);
+              } catch (memoryError) {
+                console.error('Memory processing error for image:', memoryError);
+              }
+            });
+          }
+        } catch (dbError) {
+          console.error('Database save error for image:', dbError);
+          // 不阻塞图像返回，即使数据库保存失败
+        }
+
+        // 返回图像URL作为特殊格式的响应
+        const imageResult = {
+          type: 'image',
+          url: imageUrl,
+          prompt: imagePrompt
+        };
+        
+        console.log('Returning image response:', imageResult);
+
+        return new Response(JSON.stringify(imageResult), {
+          headers: { 'Content-Type': 'application/json' },
+        });
+        
+      } catch (error) {
+        console.error('Image generation error:', error);
+        
+        let errorMessage = '图像生成失败';
+        if (error instanceof Error) {
+          if (error.message.includes('safety')) {
+            errorMessage = '内容不符合安全规范，请修改描述后重试';
+          } else if (error.message.includes('billing')) {
+            errorMessage = '账户余额不足，请检查API配额';
+          } else if (error.message.includes('rate_limit')) {
+            errorMessage = '请求过于频繁，请稍后重试';
+          }
+        }
+        
+        return NextResponse.json({ 
+          error: errorMessage 
+        }, { status: 400 });
+      }
+    }
+
+    // 文本生成逻辑（原有逻辑）
+    // 推理模型使用 max_completion_tokens，传统模型使用 max_tokens
+    const isReasoningModel = ['o1-preview', 'o1-mini', 'o3-mini'].includes(model);
+    const tokenParam = isReasoningModel ? 'max_completion_tokens' : 'max_tokens';
+    
     const response = await openai.chat.completions.create({
       model,
       messages,
       stream: true,
-      max_tokens: 2000,
+      [tokenParam]: 2000,
     });
 
     let fullResponse = '';
@@ -806,11 +951,11 @@ export async function POST(request: Request) {
               });
 
               // 异步处理AI回复的记忆存储（不阻塞响应）
-              if (process.env.ENABLE_ADVANCED_MEMORY !== 'false') {
+              if (false && process.env.ENABLE_ADVANCED_MEMORY !== 'false' && userId) {
                 Promise.resolve().then(async () => {
                   try {
                     await memoryManager.processMessage(
-                      userId,
+                      userId as number,
                       conversationId,
                       assistantMessage.id,
                       fullResponse,
@@ -825,7 +970,7 @@ export async function POST(request: Request) {
 
                     // 定期记忆维护（5%概率）
                     if (Math.random() < 0.05) {
-                      intelligentForgettingSystem.processMemoryDecay(userId);
+                      intelligentForgettingSystem.processMemoryDecay(userId as number);
                     }
                   } catch (memoryError) {
                     console.error('AI response memory processing error:', memoryError);
