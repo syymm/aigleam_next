@@ -506,25 +506,27 @@ export async function POST(request: Request) {
     });
 
     // 异步处理记忆系统（不阻塞主要流程）
-    Promise.resolve().then(async () => {
-      try {
-        // 初始化用户画像
-        await userProfileSystem.initializeUserProfile(userId);
-        
-        // 处理用户消息的记忆存储
-        await memoryManager.processMessage(
-          userId,
-          conversationId,
-          userMessage.id,
-          message,
-          true,
-          userMessage.importanceScore
-        );
-      } catch (memoryError) {
-        console.error('Memory processing error:', memoryError);
-        // 记忆系统错误不影响主要聊天功能
-      }
-    });
+    if (process.env.ENABLE_ADVANCED_MEMORY !== 'false') {
+      Promise.resolve().then(async () => {
+        try {
+          // 初始化用户画像
+          await userProfileSystem.initializeUserProfile(userId);
+          
+          // 处理用户消息的记忆存储
+          await memoryManager.processMessage(
+            userId,
+            conversationId,
+            userMessage.id,
+            message,
+            true,
+            userMessage.importanceScore
+          );
+        } catch (memoryError) {
+          console.error('Memory processing error:', memoryError);
+          // 记忆系统错误不影响主要聊天功能
+        }
+      });
+    }
 
     // 第二步：处理文件上传（在事务外，避免长时间锁定）
     let appendedFileInfo = '';
@@ -665,9 +667,14 @@ export async function POST(request: Request) {
     let enhancedSystemPrompt = systemPrompt;
     let contextMemories: any[] = [];
     
-    try {
-      // 设置5秒超时，避免记忆系统阻塞响应
-      const memoryPromise = Promise.race([
+    // 检查是否启用高级记忆功能
+    const enableAdvancedMemory = process.env.ENABLE_ADVANCED_MEMORY !== 'false';
+    const memoryTimeout = parseInt(process.env.MEMORY_TIMEOUT_MS || '1000');
+    
+    if (enableAdvancedMemory) {
+      try {
+        // 设置可配置超时，避免记忆系统阻塞响应
+        const memoryPromise = Promise.race([
         (async () => {
           // 获取用户个性化信息
           const userPersonalization = await userProfileSystem.getUserPersonalization(userId);
@@ -686,7 +693,7 @@ export async function POST(request: Request) {
           return { userPersonalization, crossSessionContext, memoryLayers };
         })(),
         new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Memory timeout')), 3000) // 3秒超时
+          setTimeout(() => reject(new Error('Memory timeout')), memoryTimeout)
         )
       ]);
 
@@ -715,9 +722,12 @@ export async function POST(request: Request) {
           ? `${enhancedSystemPrompt}\n\n${memoryContext}`
           : memoryContext;
       }
-    } catch (memoryError) {
-      console.error('Memory context enhancement error (using fallback):', memoryError);
-      // 记忆增强失败时使用原始系统提示，不影响响应速度
+      } catch (memoryError) {
+        console.error('Memory context enhancement error (using fallback):', memoryError);
+        // 记忆增强失败时使用原始系统提示，不影响响应速度
+      }
+    } else {
+      console.log('Advanced memory disabled - using fast mode');
     }
 
     // 构建AI对话上下文
@@ -796,30 +806,32 @@ export async function POST(request: Request) {
               });
 
               // 异步处理AI回复的记忆存储（不阻塞响应）
-              Promise.resolve().then(async () => {
-                try {
-                  await memoryManager.processMessage(
-                    userId,
-                    conversationId,
-                    assistantMessage.id,
-                    fullResponse,
-                    false,
-                    assistantMessage.importanceScore
-                  );
+              if (process.env.ENABLE_ADVANCED_MEMORY !== 'false') {
+                Promise.resolve().then(async () => {
+                  try {
+                    await memoryManager.processMessage(
+                      userId,
+                      conversationId,
+                      assistantMessage.id,
+                      fullResponse,
+                      false,
+                      assistantMessage.importanceScore
+                    );
 
-                  // 强化相关记忆
-                  for (const memory of contextMemories) {
-                    await crossSessionMemorySystem.reinforceMemory(memory.id, 0.5);
-                  }
+                    // 强化相关记忆
+                    for (const memory of contextMemories) {
+                      await crossSessionMemorySystem.reinforceMemory(memory.id, 0.5);
+                    }
 
-                  // 定期记忆维护（5%概率）
-                  if (Math.random() < 0.05) {
-                    intelligentForgettingSystem.processMemoryDecay(userId);
+                    // 定期记忆维护（5%概率）
+                    if (Math.random() < 0.05) {
+                      intelligentForgettingSystem.processMemoryDecay(userId);
+                    }
+                  } catch (memoryError) {
+                    console.error('AI response memory processing error:', memoryError);
                   }
-                } catch (memoryError) {
-                  console.error('AI response memory processing error:', memoryError);
-                }
-              });
+                });
+              }
             } catch (dbError) {
               console.error('保存AI回复失败:', dbError);
               // 不影响用户体验，记录错误即可

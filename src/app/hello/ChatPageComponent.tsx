@@ -133,9 +133,16 @@ const ChatPageComponent: React.FC = () => {
         throw new Error('无法获取响应流');
       }
 
+      let isFirstChunk = true;
       while (true) {
         const { value, done } = await reader.read();
         if (done) break;
+        
+        // 收到第一个数据块时就停止loading
+        if (isFirstChunk) {
+          setIsLoading(false);
+          isFirstChunk = false;
+        }
         
         const text = decoder.decode(value);
         setMessagesMap(prevMap => {
@@ -152,6 +159,9 @@ const ChatPageComponent: React.FC = () => {
       }
     } catch (error) {
       console.error('Stream error:', error);
+      
+      // 流式响应出错时也要停止loading
+      setIsLoading(false);
       
       // 使用 Snackbar 显示错误
       showError('消息接收失败，正在重试...');
